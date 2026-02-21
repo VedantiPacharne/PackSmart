@@ -11,6 +11,7 @@ backend/uploads/
 backend/outputs/
 
 # Environment
+/venv
 .env
 
 # OS files
