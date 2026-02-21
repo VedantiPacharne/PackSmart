@@ -1,2 +1,18 @@
-venv/ 
-frontend/node_modules/ 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Node
+node_modules/
+
+# Uploads & outputs
+backend/uploads/
+backend/outputs/
+
+# Environment
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
