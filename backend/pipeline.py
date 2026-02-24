@@ -3,7 +3,7 @@ from modules.dimensions import get_real_dimensions
 from modules.material import predict_material
 from modules.weight import estimate_weight
 
-def run_pipeline(front_image_path, top_image_path):
+def run_pipeline(front_image_path, top_image_path, real_width_cm):
     """
     Complete pipeline:
     1. Front detection (YOLO)
@@ -12,15 +12,14 @@ def run_pipeline(front_image_path, top_image_path):
     4. Material prediction using cropped front image
     """
 
+    if real_width_cm <= 0:
+        raise ValueError("Real width must be greater than zero")
+
     # ---------------- FRONT DETECTION ----------------
     front_data = detect_front_object(front_image_path)
 
     # ---------------- TOP DETECTION ----------------
     top_data = detect_top_object(top_image_path)
-
-    real_width_cm = float(input("Enter width: "))
-    if real_width_cm <= 0:
-        raise ValueError("Real width must be greater than zero")
 
     # ---------------- REAL DIMENSION CALCULATION ----------------
     real_dimensions = get_real_dimensions(

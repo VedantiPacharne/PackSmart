@@ -7,7 +7,7 @@ from ultralytics import YOLO
 _model = None
 
 # ------------------------Model Loading------------------------
-def load_model(model_path="backend/models/best.pt"):
+def load_model(model_path="../models/best.pt"):
     global _model
     if _model is None:
         _model = YOLO(model_path)
@@ -15,7 +15,7 @@ def load_model(model_path="backend/models/best.pt"):
 
 
 # ------------------------Front Object Detection Function------------------------
-def detect_front_object(image_path, save_dir="outputs", model_path="backend/models/best.pt"):
+def detect_front_object(image_path, save_dir="outputs", model_path="../models/best.pt"):
     """
     Detect object from front image and return reusable outputs.
 

@@ -10,8 +10,8 @@ from torchvision import models, transforms
 # =========================================
 # CONFIG (adjust if needed)
 # =========================================
-MODEL_PATH = "backend/models/efficientnetb4_best_model.pth"
-CLASS_NAMES_PATH = "backend/models/class_names.json"
+MODEL_PATH = "../models/efficientnetb4_best_model.pth"
+# CLASS_NAMES_PATH = "backend/models/class_names.json"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
