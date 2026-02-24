@@ -46,6 +46,10 @@ def detect_front_object(image_path, save_dir="outputs", model_path="backend/mode
     # take first detected object
     x1, y1, x2, y2 = map(int, boxes[0].xyxy[0])
 
+    #object name
+    cls_id = int(boxes.cls[0])
+    object_name = model.names[cls_id]
+
     # pixel dimensions
     width_px = x2 - x1
     height_px = y2 - y1
@@ -78,7 +82,8 @@ def detect_front_object(image_path, save_dir="outputs", model_path="backend/mode
         "height_px": height_px,
         "bbox_image_path": bbox_path,
         "crop_image_path": crop_path,
-        "crop_image": cropped
+        "crop_image": cropped,
+        "object_name": object_name
     }
 
 # ------------------------Top Object Detection Function------------------------
