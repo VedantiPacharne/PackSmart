@@ -248,7 +248,7 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
                 </span>
               </h1>
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Capture product images, estimate real-world dimensions, identify materials, and generate optimized packaging solutions — instantly.
+                An image is all it takes to design the perfect package, instantly estimating real-world dimensions, identifying materials, and generating packaging solutions.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Button size="lg" onClick={() => setCurrentPage("capture")} className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl hover:shadow-2xl transition-all">
