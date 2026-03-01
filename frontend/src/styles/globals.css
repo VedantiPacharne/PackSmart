@@ -192,4 +192,153 @@
 
 html {
   font-size: var(--font-size);
+  overflow-x: hidden;
+  overflow-anchor: none; /* Prevent scroll anchoring */
+}
+
+/* Prevent mobile browsers from zooming on input focus */
+input[type="number"],
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+textarea,
+select {
+  font-size: 16px !important;
+  touch-action: manipulation;
+  scroll-margin: 0 !important;
+  overflow-anchor: none !important; /* Critical for preventing auto-scroll */
+}
+
+/* Completely prevent scroll on input focus */
+input:focus,
+textarea:focus,
+select:focus {
+  scroll-margin-block: 0 !important;
+  scroll-margin-inline: 0 !important;
+  scroll-snap-align: none !important;
+  overflow-anchor: none !important;
+}
+
+/* Prevent iOS Safari from scrolling to input */
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Critical: Prevent browser from scrolling input into view */
+*:focus {
+  scroll-margin: 0 !important;
+  scroll-padding: 0 !important;
+  overflow-anchor: none !important;
+}
+
+/* Prevent layout shift when input is focused */
+body {
+  overflow-x: hidden;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto !important;
+  overflow-anchor: none !important;
+}
+
+/* Prevent scroll restoration */
+* {
+  overscroll-behavior: none;
+}
+
+/* Additional scroll jump prevention */
+input,
+textarea {
+  will-change: auto !important;
+}
+
+/* Prevent any automatic scroll behavior */
+html {
+  scroll-behavior: auto !important;
+}
+
+/* Aggressive scroll prevention on input interaction */
+input:focus-within,
+textarea:focus-within {
+  scroll-snap-stop: normal !important;
+  overflow-anchor: none !important;
+}
+
+/* Prevent browser default scroll-into-view behavior */
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="tel"]:focus,
+input[type="number"]:focus,
+textarea:focus {
+  scroll-margin: 0 !important;
+  scroll-margin-block: 0 !important;
+  scroll-margin-inline: 0 !important;
+  scroll-padding: 0 !important;
+}
+
+/* Prevent container resize */
+form,
+.space-y-4,
+.grid {
+  contain: layout !important;
+}
+
+/* Fixed main container to prevent resize */
+#root {
+  min-height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Force consistent input dimensions across ALL states */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="number"],
+textarea {
+  box-sizing: border-box !important;
+  height: 48px !important; /* Force exact height for inputs */
+  border-width: 1px !important; /* Prevent border thickness changes */
+}
+
+/* Textarea gets min-height instead of fixed */
+textarea {
+  height: auto !important;
+  min-height: 64px !important;
+}
+
+/* Prevent any layout shift on focus by using box-shadow instead of ring */
+input:focus,
+textarea:focus {
+  border-width: 1px !important; /* Keep border 1px on focus */
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important; /* Outer glow */
+}
+
+/* Prevent dimension changes on any pseudo-state */
+input:hover,
+input:active,
+input:focus-visible,
+textarea:hover,
+textarea:active,
+textarea:focus-visible {
+  border-width: 1px !important;
+}
+
+/* Disable ALL nested scrolling - only #root can scroll */
+section,
+div[class*="max-w"],
+div[class*="container"],
+form,
+.space-y-4,
+.grid {
+  overflow: visible !important; /* No nested scroll containers */
+}
+
+/* Only dropdowns/modals can have their own scroll */
+[role="menu"],
+[role="listbox"],
+[role="dialog"] {
+  overflow: auto; /* Allow dropdown menus to scroll */
 }

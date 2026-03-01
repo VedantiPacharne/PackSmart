@@ -1,1596 +1,1307 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { 
-  Package, 
-  Upload, 
-  Scan, 
-  Layers, 
-  Box, 
-  FileText, 
-  DollarSign, 
-  User, 
-  ArrowLeft,
+import { useState, useRef, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  Package,
+  Upload,
+  Scan,
+  Layers,
+  Box,
   Eye,
   Camera,
-  RotateCcw,
-  Download,
-  Share,
-  Check,
-  Zap,
+  Ruler,
+  BarChart3,
   Shield,
-  Sparkles
-} from 'lucide-react';
-import { Button } from './components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
-import { Input } from './components/ui/input';
-import { Label } from './components/ui/label';
-import { Badge } from './components/ui/badge';
-import { Progress } from './components/ui/progress';
-import { Separator } from './components/ui/separator';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './components/ui/table';
-import { ImageWithFallback } from './components/figma/ImageWithFallback';
+  ChevronRight,
+  Play,
+  ArrowRight,
+  Check,
+  ArrowLeft,
+  FileText,
+  Download,
+  RotateCcw,
+  Weight,
+  DollarSign,
+  Grid3x3,
+  Cpu,
+  Mail,
+  MapPin,
+  Linkedin,
+  Building2,
+  SwitchCamera,
+  X,
+} from "lucide-react";
+import { Button } from "./components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "./components/ui/card";
+import { Input } from "./components/ui/input";
+import { Label } from "./components/ui/label";
+import { Badge } from "./components/ui/badge";
+import { Progress } from "./components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./components/ui/table";
+import { ImageWithFallback } from "./components/figma/ImageWithFallback";
 
-type Screen = 
-  | 'splash'
-  | 'login'
-  | 'signup'
-  | 'dashboard'
-  | 'upload'
-  | 'analysis'
-  | 'material'
-  | 'recommendation'
-  | 'design'
-  | 'bom'
-  | 'quotation'
-  | 'profile';
+type Page =
+  | "landing"
+  | "capture"
+  | "camera"
+  | "detection"
+  | "materials"
+  | "packaging"
+  | "bom"
+  | "pricing";
 
-type UploadedImage = {
+type ImageData = {
   url: string;
-  name: string;
+  file: File | null;
 };
 
-type AnalysisData = {
-  objectName: string;
+type CameraViewType = "top" | "side";
+
+type AppData = {
+  topViewImage: ImageData | null;
+  sideViewImage: ImageData | null;
+  knownWidth: string;
+  detectedObject: string;
+  confidence: number;
   dimensions: {
     length: number;
-    breadth: number;
+    width: number;
     height: number;
+    volume: number;
   };
-  volume: number;
-  weight: number;
+  materials: {
+    cardboard: number;
+    plastic: number;
+  };
+  materialProperties: {
+    category: string;
+    fragility: string;
+  };
+  estimatedWeight: number;
+  realWeight: string;
+  packaging: {
+    type: string;
+    boxDimensions: string;
+    cushioning: string;
+  };
+  bom: Array<{
+    material: string;
+    quantity: string;
+    unit: string;
+    usage: string;
+  }>;
+  pricing: {
+    materialCost: number;
+    packagingCost: number;
+    cushioningCost: number;
+    totalCost: number;
+    quotationId: string;
+  };
+  companyDetails: {
+    companyName: string;
+    companyTagline: string;
+    name: string;
+    address: string;
+    phone: string;
+    email: string;
+  };
 };
 
-type MaterialData = {
-  material: string;
-  confidence: number;
-  properties: string[];
+type PageProps = {
+  appData: AppData;
+  setAppData: React.Dispatch<React.SetStateAction<AppData>>;
+  currentPage: Page;
+  setCurrentPage: (page: Page) => void;
+  currentCameraView: CameraViewType;
+  openCamera: (view: CameraViewType) => void;
+  capturedImage: string | null;
+  setCapturedImage: (img: string | null) => void;
+  handleCapture: () => void;
+  handleUseImage: () => void;
+  handleImageUpload: (file: File, type: "top" | "side") => void;
 };
 
-type PackagingRecommendation = {
-  boxMaterial: string;
-  boxSize: string;
-  thickness: string;
-  features: string[];
-  cost: number;
+const pageStepsMap: Record<Page, number> = {
+  landing: 0,
+  capture: 1,
+  camera: 1,
+  detection: 2,
+  materials: 3,
+  packaging: 4,
+  bom: 5,
+  pricing: 6,
 };
 
-export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
-  const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
-  const [analysisData, setAnalysisData] = useState<AnalysisData>({
-    objectName: 'Smartphone',
-    dimensions: { length: 15.2, breadth: 7.4, height: 0.8 },
-    volume: 89.8,
-    weight: 174
-  });
-  const [materialData, setMaterialData] = useState<MaterialData>({
-    material: 'Metal & Glass',
-    confidence: 94,
-    properties: ['Fragile', 'High Value', 'Electronic']
-  });
-  const [recommendation, setRecommendation] = useState<PackagingRecommendation>({
-    boxMaterial: 'Corrugated Cardboard',
-    boxSize: '18 x 10 x 5 cm',
-    thickness: '3mm',
-    features: ['Shock Absorption', 'Moisture Resistant', 'Tamper Evident'],
-    cost: 2.45
-  });
-
-  const navigateToScreen = (screen: Screen) => {
-    setCurrentScreen(screen);
-  };
-
-  const handleImageUpload = (file: File) => {
-    const url = URL.createObjectURL(file);
-    setUploadedImage({
-      url,
-      name: file.name
-    });
-    navigateToScreen('analysis');
-  };
-
-  const SplashScreen = () => (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex flex-col items-center justify-center p-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="text-center max-w-md"
-      >
-        <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-8 mx-auto shadow-lg">
-          <Package className="w-12 h-12 text-white" />
+function ProgressIndicator({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
+  if (currentStep === 0) return null;
+  const steps = [
+    { label: "Upload", step: 1 },
+    { label: "Analysis", step: 2 },
+    { label: "Material", step: 3 },
+    { label: "Recommendation", step: 4 },
+    { label: "Design", step: 5 },
+    { label: "Quote", step: 6 },
+  ];
+  return (
+    <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 py-4 px-6">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm font-semibold text-gray-700">Progress</span>
+          <span className="text-sm text-gray-500">{currentStep} of {totalSteps}</span>
         </div>
-        
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">SmartPack AI</h1>
-        <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-          AI-Powered Smart Packaging Assistant for Automated Box Design
-        </p>
-        
-        <div className="flex items-center justify-center space-x-6 mb-8">
-          <div className="flex items-center space-x-2">
-            <Zap className="w-5 h-5 text-blue-500" />
-            <span className="text-sm text-gray-600">Fast</span>
+        <div className="relative">
+          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden mb-3">
+            <motion.div
+              className="h-full bg-gradient-to-r from-blue-600 to-blue-700"
+              initial={{ width: 0 }}
+              animate={{ width: `${(currentStep / totalSteps) * 100}%` }}
+              transition={{ duration: 0.5 }}
+            />
           </div>
-          <div className="flex items-center space-x-2">
-            <Shield className="w-5 h-5 text-blue-500" />
-            <span className="text-sm text-gray-600">Reliable</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Sparkles className="w-5 h-5 text-blue-500" />
-            <span className="text-sm text-gray-600">Smart</span>
+          <div className="flex justify-between">
+            {steps.map((step) => (
+              <div key={step.step} className={`text-xs ${step.step <= currentStep ? "text-blue-700 font-medium" : "text-gray-400"}`}>
+                {step.label}
+              </div>
+            ))}
           </div>
         </div>
-        
-        <Button 
-          onClick={() => navigateToScreen('login')}
-          className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-8 py-3 rounded-xl shadow-lg"
-        >
-          Get Started
-        </Button>
-      </motion.div>
+      </div>
     </div>
   );
+}
 
-  const LoginScreen = () => (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex flex-col items-center justify-center p-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
-      >
-        <Card className="border-0 shadow-xl">
-          <CardHeader className="text-center pb-2">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-4 mx-auto">
-              <Package className="w-8 h-8 text-white" />
-            </div>
-            <CardTitle className="text-2xl">Welcome Back</CardTitle>
-            <p className="text-gray-600">Sign in to your account</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email"
-                type="email" 
-                placeholder="Enter your email"
-                className="rounded-xl border-gray-200"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password"
-                type="password" 
-                placeholder="Enter your password"
-                className="rounded-xl border-gray-200"
-              />
-            </div>
-            <Button 
-              onClick={() => navigateToScreen('dashboard')}
-              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl"
+function Navbar({ showBack, currentPage, setCurrentPage }: { showBack?: boolean; currentPage: Page; setCurrentPage: (p: Page) => void }) {
+  return (
+    <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 py-4 px-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between">
+          {showBack ? (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                const pages: Page[] = ["landing", "capture", "camera", "detection", "materials", "packaging", "bom", "pricing"];
+                const currentIndex = pages.indexOf(currentPage);
+                if (currentIndex > 0) setCurrentPage(pages[currentIndex - 1]);
+              }}
+              className="hover:bg-gray-100"
             >
-              Sign In
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
             </Button>
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <Separator />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-gray-500">Or continue with</span>
-              </div>
-            </div>
-            <Button 
-              variant="outline" 
-              className="w-full rounded-xl border-gray-200"
-              onClick={() => navigateToScreen('dashboard')}
-            >
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              Continue with Google
-            </Button>
-            <div className="text-center">
-              <Button 
-                variant="ghost" 
-                className="text-blue-600 hover:text-blue-700"
-                onClick={() => navigateToScreen('signup')}
-              >
-                Don't have an account? Sign up
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </div>
-  );
-
-  const SignupScreen = () => (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex flex-col items-center justify-center p-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
-      >
-        <Card className="border-0 shadow-xl">
-          <CardHeader className="text-center pb-2">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-4 mx-auto">
-              <Package className="w-8 h-8 text-white" />
-            </div>
-            <CardTitle className="text-2xl">Create Account</CardTitle>
-            <p className="text-gray-600">Get started with SmartPack AI</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <Input 
-                  id="firstName"
-                  placeholder="John"
-                  className="rounded-xl border-gray-200"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input 
-                  id="lastName"
-                  placeholder="Doe"
-                  className="rounded-xl border-gray-200"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email"
-                type="email" 
-                placeholder="john@example.com"
-                className="rounded-xl border-gray-200"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password"
-                type="password" 
-                placeholder="Create a strong password"
-                className="rounded-xl border-gray-200"
-              />
-            </div>
-            <Button 
-              onClick={() => navigateToScreen('dashboard')}
-              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl"
-            >
-              Create Account
-            </Button>
-            <div className="text-center">
-              <Button 
-                variant="ghost" 
-                className="text-blue-600 hover:text-blue-700"
-                onClick={() => navigateToScreen('login')}
-              >
-                Already have an account? Sign in
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </div>
-  );
-
-  const DashboardScreen = () => (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+          ) : (
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
                 <Package className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">SmartPack AI</h1>
-                <p className="text-sm text-gray-500">Dashboard</p>
+                <h1 className="text-xl font-bold text-gray-900">PACKSMART</h1>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => navigateToScreen('profile')}
-              className="rounded-lg"
-            >
-              <User className="w-4 h-4" />
-            </Button>
-          </div>
+          )}
+          {!showBack && (
+            <div className="hidden md:flex items-center space-x-8">
+              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">Workflow</button>
+              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">Technology</button>
+              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">Modules</button>
+              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">About</button>
+            </div>
+          )}
         </div>
       </div>
+    </nav>
+  );
+}
 
-      <div className="max-w-7xl mx-auto p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Welcome back!</h2>
-          <p className="text-gray-600">Start designing smart packaging solutions with AI</p>
-        </motion.div>
+function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
+  const modules = [
+    { icon: Camera, title: "Image Capture", description: "Capture top and side images of the object.", color: "from-blue-500 to-blue-600" },
+    { icon: Scan, title: "Object Detection & Dimension Estimation", description: "AI detects the object and calculates physical dimensions and volume.", color: "from-teal-500 to-teal-600" },
+    { icon: Layers, title: "Material Classification", description: "Identifies material composition using deep learning.", color: "from-violet-500 to-violet-600" },
+    { icon: Box, title: "Packaging Recommendation", description: "Generates optimized box size and material suggestions.", color: "from-orange-500 to-orange-600" },
+    { icon: FileText, title: "Bill of Materials (BOM)", description: "Breakdown of packaging materials required.", color: "from-green-500 to-green-600" },
+    { icon: DollarSign, title: "Pricing & Quotation", description: "Estimated packaging cost and quotation generation.", color: "from-pink-500 to-pink-600" },
+  ];
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[
-            {
-              icon: Upload,
-              title: 'Upload Image',
-              description: 'Start by uploading an image of your product',
-              screen: 'upload' as Screen,
-              color: 'from-blue-500 to-blue-600'
-            },
-            {
-              icon: Scan,
-              title: 'Object Analysis',
-              description: 'AI-powered object detection and measurement',
-              screen: 'analysis' as Screen,
-              color: 'from-green-500 to-green-600'
-            },
-            {
-              icon: Layers,
-              title: 'Material Analysis',
-              description: 'Identify material properties and characteristics',
-              screen: 'material' as Screen,
-              color: 'from-purple-500 to-purple-600'
-            },
-            {
-              icon: Box,
-              title: 'Packaging Recommendation',
-              description: 'Get optimal packaging solutions',
-              screen: 'recommendation' as Screen,
-              color: 'from-orange-500 to-orange-600'
-            },
-            {
-              icon: Eye,
-              title: 'Box Design',
-              description: 'Visualize your packaging in 2D and 3D',
-              screen: 'design' as Screen,
-              color: 'from-pink-500 to-pink-600'
-            },
-            {
-              icon: FileText,
-              title: 'BOM & Quotation',
-              description: 'Generate materials list and cost estimation',
-              screen: 'bom' as Screen,
-              color: 'from-indigo-500 to-indigo-600'
-            }
-          ].map((item, index) => (
-            <motion.div
-              key={item.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Card 
-                className="cursor-pointer hover:shadow-lg transition-all duration-200 border-0 shadow-md group"
-                onClick={() => navigateToScreen(item.screen)}
-              >
-                <CardContent className="p-6">
-                  <div className={`w-12 h-12 bg-gradient-to-r ${item.color} rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform`}>
-                    <item.icon className="w-6 h-6 text-white" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">{item.title}</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed">{item.description}</p>
-                </CardContent>
-              </Card>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
+      <Navbar currentPage="landing" setCurrentPage={setCurrentPage} />
+      <section className="pt-20 pb-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <motion.div initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }}>
+              <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+                Smart Packaging Decisions, Powered by{" "}
+                <span className="bg-gradient-to-r from-blue-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+                  Vision Intelligence
+                </span>
+              </h1>
+              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+                Capture product images, estimate real-world dimensions, identify materials, and generate optimized packaging solutions — instantly.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <Button size="lg" onClick={() => setCurrentPage("capture")} className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl hover:shadow-2xl transition-all">
+                  Get Started <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+                <Button size="lg" variant="outline" className="border-2 border-gray-300 hover:border-blue-500 px-8 py-6 rounded-xl">
+                  <Play className="w-4 h-4 mr-2" /> View Workflow
+                </Button>
+              </div>
             </motion.div>
-          ))}
+            <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="relative">
+              <div className="relative bg-gradient-to-br from-blue-500/10 via-teal-500/10 to-cyan-500/10 rounded-3xl p-12 backdrop-blur-sm border border-white/50 shadow-2xl">
+                <div className="relative">
+                  <div className="w-64 h-64 mx-auto relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-teal-500 rounded-2xl transform rotate-6 opacity-20"></div>
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-teal-600 rounded-2xl shadow-2xl flex items-center justify-center">
+                      <Box className="w-32 h-32 text-white/80" />
+                    </div>
+                    <motion.div animate={{ y: [0, 256, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
+                    <div className="absolute -top-8 left-0 right-0 flex justify-center">
+                      <Badge className="bg-white/90 text-blue-700 border-0 shadow-lg"><Ruler className="w-3 h-3 mr-1" />22.5 cm</Badge>
+                    </div>
+                    <div className="absolute -right-12 top-1/2 transform -translate-y-1/2">
+                      <Badge className="bg-white/90 text-teal-700 border-0 shadow-lg">16.4 cm</Badge>
+                    </div>
+                  </div>
+                  <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute top-0 -left-4 bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-xl border border-gray-200/50">
+                    <div className="flex items-center space-x-2">
+                      <Scan className="w-4 h-4 text-blue-600" />
+                      <div><p className="text-xs font-semibold text-gray-900">Scanning Object</p><p className="text-xs text-gray-500">Processing...</p></div>
+                    </div>
+                  </motion.div>
+                  <motion.div animate={{ y: [0, 10, 0] }} transition={{ duration: 2.5, repeat: Infinity }} className="absolute bottom-0 -right-4 bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-xl border border-gray-200/50">
+                    <div className="flex items-center space-x-2">
+                      <Layers className="w-4 h-4 text-teal-600" />
+                      <div><p className="text-xs font-semibold text-gray-900">Material Detected</p><p className="text-xs text-gray-500">Cardboard 68%</p></div>
+                    </div>
+                  </motion.div>
+                </div>
+              </div>
+              <div className="absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-br from-blue-400 to-teal-500 rounded-full blur-3xl opacity-30"></div>
+              <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full blur-3xl opacity-30"></div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      <section id="modules-section" className="py-20 px-6 bg-white/50">
+        <div className="max-w-7xl mx-auto">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">How PACKSMART Works</h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">Six intelligent modules for complete packaging automation</p>
+          </motion.div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {modules.map((module, index) => (
+              <motion.div key={module.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} whileHover={{ y: -5, transition: { duration: 0.2 } }}>
+                <Card className="border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-white/90 backdrop-blur-sm h-full">
+                  <CardContent className="p-6">
+                    <div className={`w-14 h-14 bg-gradient-to-br ${module.color} rounded-xl flex items-center justify-center shadow-lg mb-4`}>
+                      <module.icon className="w-7 h-7 text-white" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{module.title}</h3>
+                    <p className="text-sm text-gray-600 leading-relaxed">{module.description}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <footer className="bg-gray-900 text-white py-16 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+            <div>
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-teal-500 rounded-lg flex items-center justify-center"><Package className="w-5 h-5 text-white" /></div>
+                <span className="font-bold text-lg">PACKSMART</span>
+              </div>
+              <p className="text-gray-400 text-sm">Intelligent Packaging Automation</p>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-4 text-white">Product</h3>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li><button className="hover:text-white transition-colors">Workflow</button></li>
+                <li><button className="hover:text-white transition-colors">Modules</button></li>
+                <li><button className="hover:text-white transition-colors">Pricing</button></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-4 text-white">Technology</h3>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li><button className="hover:text-white transition-colors">Computer Vision</button></li>
+                <li><button className="hover:text-white transition-colors">Deep Learning</button></li>
+                <li><button className="hover:text-white transition-colors">Calibration Model</button></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-4 text-white">Contact</h3>
+              <ul className="space-y-3 text-sm text-gray-400">
+                <li className="flex items-center space-x-2"><Mail className="w-4 h-4" /><a href="mailto:hello@packsmart.ai" className="hover:text-white transition-colors">hello@packsmart.ai</a></li>
+                <li className="flex items-center space-x-2"><Linkedin className="w-4 h-4" /><a href="#" className="hover:text-white transition-colors">LinkedIn</a></li>
+                <li className="flex items-center space-x-2"><MapPin className="w-4 h-4" /><span>San Francisco, CA</span></li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 pt-8">
+            <p className="text-center text-sm text-gray-400">© 2026 PACKSMART. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCamera }: PageProps) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
+      <Navbar showBack currentPage={currentPage} setCurrentPage={setCurrentPage} />
+      <ProgressIndicator currentStep={pageStepsMap[currentPage]} totalSteps={6} />
+      <div className="max-w-5xl mx-auto px-6 py-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
+          <Badge className="mb-4 bg-blue-100 text-blue-700 border-0"><Camera className="w-3 h-3 mr-1" />Step 1 of 6</Badge>
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">Capture Object Images</h1>
+          <p className="text-lg text-gray-600 mb-2">Upload images from two angles for accurate analysis</p>
+          <p className="text-sm text-gray-500">Supported formats: JPG, PNG, JPEG, WEBP • Max size: 100MB per image</p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Top View Card */}
+          <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2"><Camera className="w-5 h-5 text-blue-600" /><span>Top View Image</span></CardTitle>
+            </CardHeader>
+            <CardContent>
+              {appData.topViewImage ? (
+                <div className="relative group">
+                  <ImageWithFallback src={appData.topViewImage.url} alt="Top view" className="w-full h-64 object-cover rounded-xl" />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => openCamera("top")} className="bg-white hover:bg-gray-100"><Camera className="w-4 h-4 mr-1" />Re-capture</Button>
+                    <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const url = URL.createObjectURL(file); setAppData(prev => ({ ...prev, topViewImage: { url, file } })); } }; input.click(); }} className="bg-white hover:bg-gray-100"><Upload className="w-4 h-4 mr-1" />Re-upload</Button>
+                  </div>
+                  <Badge className="absolute top-3 left-3 bg-green-500 border-0"><Check className="w-3 h-3 mr-1" />Uploaded</Badge>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 bg-gradient-to-br from-blue-50 to-teal-50 hover:border-blue-400 transition-colors">
+                  <div className="text-center">
+                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-sm font-medium text-gray-700 mb-4">Drag & drop or click to upload</p>
+                    <div className="flex flex-col gap-2">
+                      <Button size="sm" onClick={() => openCamera("top")} className="bg-gradient-to-r from-blue-600 to-teal-600 text-white hover:from-blue-700 hover:to-teal-700"><Camera className="w-4 h-4 mr-2" />Capture Image</Button>
+                      <Button size="sm" variant="outline" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const url = URL.createObjectURL(file); setAppData(prev => ({ ...prev, topViewImage: { url, file } })); } }; input.click(); }}><Upload className="w-4 h-4 mr-2" />Upload Image</Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Side View Card */}
+          <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2"><Camera className="w-5 h-5 text-blue-600" /><span>Side View Image</span></CardTitle>
+            </CardHeader>
+            <CardContent>
+              {appData.sideViewImage ? (
+                <div className="relative group">
+                  <ImageWithFallback src={appData.sideViewImage.url} alt="Side view" className="w-full h-64 object-cover rounded-xl" />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => openCamera("side")} className="bg-white hover:bg-gray-100"><Camera className="w-4 h-4 mr-1" />Re-capture</Button>
+                    <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const url = URL.createObjectURL(file); setAppData(prev => ({ ...prev, sideViewImage: { url, file } })); } }; input.click(); }} className="bg-white hover:bg-gray-100"><Upload className="w-4 h-4 mr-1" />Re-upload</Button>
+                  </div>
+                  <Badge className="absolute top-3 left-3 bg-green-500 border-0"><Check className="w-3 h-3 mr-1" />Uploaded</Badge>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 bg-gradient-to-br from-blue-50 to-teal-50 hover:border-blue-400 transition-colors">
+                  <div className="text-center">
+                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-sm font-medium text-gray-700 mb-4">Drag & drop or click to upload</p>
+                    <div className="flex flex-col gap-2">
+                      <Button size="sm" onClick={() => openCamera("side")} className="bg-gradient-to-r from-blue-600 to-teal-600 text-white hover:from-blue-700 hover:to-teal-700"><Camera className="w-4 h-4 mr-2" />Capture Image</Button>
+                      <Button size="sm" variant="outline" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const url = URL.createObjectURL(file); setAppData(prev => ({ ...prev, sideViewImage: { url, file } })); } }; input.click(); }}><Upload className="w-4 h-4 mr-2" />Upload Image</Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="mt-8"
-        >
-          <Card className="border-0 shadow-md">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <span>Recent Projects</span>
-                <Badge variant="secondary">3</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  { name: 'Smartphone Packaging', date: '2 hours ago', status: 'Completed' },
-                  { name: 'Headphones Box Design', date: '1 day ago', status: 'In Progress' },
-                  { name: 'Watch Packaging', date: '3 days ago', status: 'Completed' }
-                ].map((project, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-                    <div>
-                      <p className="font-medium text-gray-900">{project.name}</p>
-                      <p className="text-sm text-gray-500">{project.date}</p>
-                    </div>
-                    <Badge variant={project.status === 'Completed' ? 'default' : 'secondary'}>
-                      {project.status}
-                    </Badge>
-                  </div>
-                ))}
+        <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm mb-8">
+          <CardContent className="p-8">
+            <div className="max-w-md mx-auto">
+              <div className="flex items-center justify-center mb-6">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-teal-600 rounded-xl flex items-center justify-center"><Ruler className="w-6 h-6 text-white" /></div>
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-    </div>
-  );
-
-  const UploadScreen = () => (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      <Header title="Upload Image" onBack={() => navigateToScreen('dashboard')} />
-      
-      <div className="max-w-4xl mx-auto p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
-        >
-          <Card className="border-0 shadow-xl">
-            <CardContent className="p-8">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-6 mx-auto">
-                  <Upload className="w-8 h-8 text-white" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">Upload Product Image</h2>
-                <p className="text-gray-600 mb-8">Upload a clear image of your product for AI analysis</p>
-
-                <div className="border-2 border-dashed border-blue-200 rounded-xl p-12 mb-6 bg-blue-50/50 hover:bg-blue-50 transition-colors">
-                  <div className="text-center">
-                    <Upload className="w-12 h-12 text-blue-400 mx-auto mb-4" />
-                    <p className="text-lg font-medium text-gray-700 mb-2">Drag and drop your image here</p>
-                    <p className="text-gray-500 mb-4">or</p>
-                    <Button 
-                      onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = 'image/*';
-                        input.onchange = (e) => {
-                          const file = (e.target as HTMLInputElement).files?.[0];
-                          if (file) {
-                            handleImageUpload(file);
-                          }
-                        };
-                        input.click();
-                      }}
-                      className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg"
-                    >
-                      Browse Files
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-center space-x-8 text-sm text-gray-500">
-                  <span>JPG, PNG up to 10MB</span>
-                  <span>•</span>
-                  <span>Best results with clear, well-lit images</span>
+              <Label htmlFor="known-width" className="text-base font-semibold text-gray-900 mb-4 block text-center">Enter Known Width (in cm)</Label>
+              <input
+                id="known-width"
+                type="number"
+                inputMode="decimal"
+                placeholder="Example: 7.8"
+                value={appData.knownWidth}
+                onChange={(e) => setAppData((prev) => ({ ...prev, knownWidth: e.target.value }))}
+                className="text-center text-xl font-semibold h-12 bg-white border border-gray-300 focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.15)] rounded-xl mb-4 w-full px-3 focus:outline-none"
+              />
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <div className="flex items-start space-x-3">
+                  <Shield className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-gray-700">This value is used to scale all other dimensions.</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Camera className="w-5 h-5 text-blue-500" />
-                <span>Camera Options</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button 
-                  variant="outline" 
-                  className="h-20 rounded-xl border-gray-200 hover:border-blue-300"
-                  onClick={() => {
-                    // Simulate camera capture
-                    setUploadedImage({
-                      url: 'https://images.unsplash.com/photo-1551650992-ee4fd47df41f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2JpbGUlMjBhcHAlMjBpbnRlcmZhY2UlMjBtb2Rlcm58ZW58MXx8fHwxNzU4MTY3MzUzfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-                      name: 'smartphone.jpg'
-                    });
-                    navigateToScreen('analysis');
-                  }}
-                >
-                  <div className="text-center">
-                    <Camera className="w-6 h-6 text-gray-600 mx-auto mb-2" />
-                    <span>Take Photo</span>
-                  </div>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="h-20 rounded-xl border-gray-200 hover:border-blue-300"
-                  onClick={() => navigateToScreen('analysis')}
-                >
-                  <div className="text-center">
-                    <Upload className="w-6 h-6 text-gray-600 mx-auto mb-2" />
-                    <span>Upload from Gallery</span>
-                  </div>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-    </div>
-  );
-
-  const AnalysisScreen = () => (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      <Header title="Object Analysis" onBack={() => navigateToScreen('upload')} />
-      
-      <div className="max-w-4xl mx-auto p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
-        >
-          <ProgressIndicator currentStep={2} totalSteps={6} />
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Eye className="w-5 h-5 text-blue-500" />
-                  <span>Uploaded Image</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {uploadedImage && (
-                  <div className="relative">
-                    <ImageWithFallback 
-                      src={uploadedImage.url}
-                      alt="Uploaded product"
-                      className="w-full h-64 object-cover rounded-lg"
-                    />
-                    <div className="absolute inset-0 border-2 border-green-400 rounded-lg"></div>
-                    <Badge className="absolute top-2 left-2 bg-green-500">
-                      Object Detected
-                    </Badge>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Scan className="w-5 h-5 text-green-500" />
-                  <span>Analysis Results</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Detected Object</Label>
-                  <p className="text-lg font-semibold text-gray-900">{analysisData.objectName}</p>
-                </div>
-
-                <Separator />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm font-medium text-gray-700">Length</Label>
-                    <p className="text-lg font-semibold text-blue-600">{analysisData.dimensions.length} cm</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-700">Breadth</Label>
-                    <p className="text-lg font-semibold text-blue-600">{analysisData.dimensions.breadth} cm</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-700">Height</Label>
-                    <p className="text-lg font-semibold text-blue-600">{analysisData.dimensions.height} cm</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-700">Volume</Label>
-                    <p className="text-lg font-semibold text-purple-600">{analysisData.volume} cm³</p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Estimated Weight</Label>
-                  <p className="text-lg font-semibold text-orange-600">{analysisData.weight}g</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="border-0 shadow-lg bg-gradient-to-r from-green-50 to-green-100 border-green-200">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                  <Check className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-green-800">Analysis Complete!</h3>
-                  <p className="text-green-600">Your product has been successfully analyzed. Proceeding to material classification.</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end space-x-4">
-            <Button 
-              variant="outline" 
-              onClick={() => navigateToScreen('upload')}
-              className="rounded-lg"
-            >
-              Re-upload Image
-            </Button>
-            <Button 
-              onClick={() => navigateToScreen('material')}
-              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg"
-            >
-              Continue to Material Analysis
-            </Button>
-          </div>
-        </motion.div>
-      </div>
-    </div>
-  );
-
-  const MaterialScreen = () => (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      <Header title="Material Classification" onBack={() => navigateToScreen('analysis')} />
-      
-      <div className="max-w-4xl mx-auto p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
-        >
-          <ProgressIndicator currentStep={3} totalSteps={6} />
-
-          <Card className="border-0 shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Layers className="w-5 h-5 text-purple-500" />
-                <span>Material Analysis Results</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="text-center">
-                <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 mx-auto">
-                  <Layers className="w-12 h-12 text-white" />
-                </div>
-                <h3 className="text-2xl font-semibold text-gray-900 mb-2">Material Detected</h3>
-                <p className="text-xl text-purple-600 font-semibold">{materialData.material}</p>
-              </div>
-
-              <div className="text-center">
-                <Label className="text-sm font-medium text-gray-700 block mb-2">AI Confidence</Label>
-                <div className="flex items-center justify-center space-x-4">
-                  <Progress value={materialData.confidence} className="flex-1 max-w-xs" />
-                  <span className="text-lg font-semibold text-green-600">{materialData.confidence}%</span>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <Label className="text-lg font-medium text-gray-900 block mb-4">Material Properties</Label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {materialData.properties.map((property, index) => (
-                    <Badge key={index} variant="secondary" className="justify-center py-2 text-sm">
-                      {property}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-800 mb-2">Packaging Considerations</h4>
-                <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• Requires protective packaging due to fragile nature</li>
-                  <li>• Anti-static materials recommended for electronics</li>
-                  <li>• Shock-absorbing inserts needed</li>
-                  <li>• Moisture protection recommended</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end space-x-4">
-            <Button 
-              variant="outline" 
-              onClick={() => navigateToScreen('analysis')}
-              className="rounded-lg"
-            >
-              Back to Analysis
-            </Button>
-            <Button 
-              onClick={() => navigateToScreen('recommendation')}
-              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg"
-            >
-              Get Packaging Recommendation
-            </Button>
-          </div>
-        </motion.div>
-      </div>
-    </div>
-  );
-
-  const RecommendationScreen = () => (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      <Header title="Packaging Recommendation" onBack={() => navigateToScreen('material')} />
-      
-      <div className="max-w-6xl mx-auto p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
-        >
-          <ProgressIndicator currentStep={4} totalSteps={6} />
-
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Recommended Packaging Solution</h2>
-            <p className="text-gray-600">Based on your product analysis, here's our AI-powered recommendation</p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="border-0 shadow-xl border-l-4 border-l-green-500">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-green-700">
-                  <Check className="w-5 h-5" />
-                  <span>Recommended Solution</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Box Material</Label>
-                  <p className="text-lg font-semibold text-gray-900">{recommendation.boxMaterial}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Optimal Size</Label>
-                  <p className="text-lg font-semibold text-blue-600">{recommendation.boxSize}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Wall Thickness</Label>
-                  <p className="text-lg font-semibold text-purple-600">{recommendation.thickness}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Estimated Cost</Label>
-                  <p className="text-2xl font-bold text-green-600">₹{recommendation.cost}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700 block mb-2">Key Features</Label>
-                  <div className="space-y-2">
-                    {recommendation.features.map((feature, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <Check className="w-4 h-4 text-green-500" />
-                        <span className="text-sm text-gray-700">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>Alternative Options</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {[
-                  {
-                    material: 'Bubble Wrap Envelope',
-                    size: '20 x 12 x 2 cm',
-                    cost: 1.85,
-                    features: ['Lightweight', 'Water Resistant']
-                  },
-                  {
-                    material: 'Rigid Cardboard Box',
-                    size: '20 x 12 x 6 cm',
-                    cost: 3.20,
-                    features: ['Extra Protection', 'Premium Look']
-                  }
-                ].map((option, index) => (
-                  <div key={index} className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-medium text-gray-900">{option.material}</h4>
-                      <span className="text-lg font-semibold text-gray-700">₹{option.cost}</span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-2">{option.size}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {option.features.map((feature, i) => (
-                        <Badge key={i} variant="outline" className="text-xs">
-                          {feature}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="border-0 shadow-lg bg-gradient-to-r from-orange-50 to-orange-100">
-            <CardContent className="p-6">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <Box className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-orange-800 mb-2">Why This Recommendation?</h3>
-                  <ul className="text-orange-700 space-y-1 text-sm">
-                    <li>• Optimal protection for fragile electronics</li>
-                    <li>• Cost-effective material selection</li>
-                    <li>• Environmentally friendly corrugated cardboard</li>
-                    <li>• Perfect size ratio (20% buffer space for protection)</li>
-                    <li>• Suitable for standard shipping methods</li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end space-x-4">
-            <Button 
-              variant="outline" 
-              onClick={() => navigateToScreen('material')}
-              className="rounded-lg"
-            >
-              Back to Material Analysis
-            </Button>
-            <Button 
-              onClick={() => navigateToScreen('design')}
-              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg"
-            >
-              Proceed to Design
-            </Button>
-          </div>
-        </motion.div>
-      </div>
-    </div>
-  );
-
-  const DesignScreen = () => (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      <Header title="Box Design" onBack={() => navigateToScreen('recommendation')} />
-      
-      <div className="max-w-7xl mx-auto p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
-        >
-          <ProgressIndicator currentStep={5} totalSteps={6} />
-
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Box Design Preview</h2>
-            <p className="text-gray-600">2D layout and 3D visualization of your packaging</p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="border-0 shadow-xl">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <FileText className="w-5 h-5 text-blue-500" />
-                  <span>2D Flat Layout</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-gray-50 rounded-lg p-8 min-h-80 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-64 h-48 border-2 border-dashed border-gray-400 rounded-lg relative mx-auto mb-4">
-                      <div className="absolute inset-4 border border-gray-300"></div>
-                      <div className="absolute top-2 left-2 text-xs text-gray-500">Top</div>
-                      <div className="absolute bottom-2 left-2 text-xs text-gray-500">Bottom</div>
-                      <div className="absolute top-1/2 left-1 text-xs text-gray-500 -rotate-90">Side</div>
-                      <div className="absolute top-1/2 right-1 text-xs text-gray-500 rotate-90">Side</div>
-                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-xs text-gray-600 font-medium">
-                        18cm × 10cm × 5cm
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600">Unfolded box template with cut lines</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-xl">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <RotateCcw className="w-5 h-5 text-purple-500" />
-                  <span>3D Interactive Preview</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-8 min-h-80 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-32 h-32 bg-gradient-to-br from-orange-200 to-orange-300 rounded-lg mx-auto mb-4 relative transform rotate-12 shadow-lg">
-                      <div className="absolute inset-2 border-2 border-orange-400 rounded-md"></div>
-                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-xs font-medium text-orange-700">
-                        3D Box
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-2">Interactive 3D model</p>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="rounded-lg"
-                    >
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      Rotate View
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-center">Dimensions</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center space-y-2">
-                <div className="text-2xl font-bold text-blue-600">18 × 10 × 5</div>
-                <div className="text-sm text-gray-600">cm (L × W × H)</div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-center">Material</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center space-y-2">
-                <div className="text-lg font-semibold text-green-600">Corrugated</div>
-                <div className="text-sm text-gray-600">3mm thickness</div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-center">Weight</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center space-y-2">
-                <div className="text-2xl font-bold text-purple-600">45g</div>
-                <div className="text-sm text-gray-600">Empty box</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle>Design Options</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { name: 'Standard Brown', color: 'bg-amber-600' },
-                  { name: 'White Premium', color: 'bg-gray-100 border' },
-                  { name: 'Black Luxury', color: 'bg-gray-900' },
-                  { name: 'Custom Print', color: 'bg-gradient-to-r from-blue-500 to-purple-500' }
-                ].map((option, index) => (
-                  <div key={index} className="text-center p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors cursor-pointer">
-                    <div className={`w-16 h-12 ${option.color} rounded-md mx-auto mb-2`}></div>
-                    <p className="text-sm font-medium text-gray-700">{option.name}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-between">
-            <div className="flex space-x-4">
-              <Button 
-                variant="outline" 
-                className="rounded-lg"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download 2D Template
-              </Button>
-              <Button 
-                variant="outline" 
-                className="rounded-lg"
-              >
-                <Share className="w-4 h-4 mr-2" />
-                Share Design
-              </Button>
             </div>
-            <div className="flex space-x-4">
-              <Button 
-                variant="outline" 
-                onClick={() => navigateToScreen('recommendation')}
-                className="rounded-lg"
-              >
-                Back to Recommendation
-              </Button>
-              <Button 
-                onClick={() => navigateToScreen('bom')}
-                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg"
-              >
-                Generate BOM & Quote
-              </Button>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-    </div>
-  );
+          </CardContent>
+        </Card>
 
-  const BOMScreen = () => (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      <Header title="Bill of Materials" onBack={() => navigateToScreen('design')} />
-      
-      <div className="max-w-6xl mx-auto p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
-        >
-          <ProgressIndicator currentStep={6} totalSteps={6} />
-
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Bill of Materials</h2>
-            <p className="text-gray-600">Detailed breakdown of materials and components</p>
-          </div>
-
-          <Card className="border-0 shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="w-5 h-5 text-green-500" />
-                <span>Material Specifications</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Component</TableHead>
-                    <TableHead>Material</TableHead>
-                    <TableHead>Dimensions (cm)</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Unit Cost</TableHead>
-                    <TableHead>Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell className="font-medium">Box Base</TableCell>
-                    <TableCell>Corrugated Cardboard 3mm</TableCell>
-                    <TableCell>18.0 × 10.0</TableCell>
-                    <TableCell>1</TableCell>
-                    <TableCell>₹0.45</TableCell>
-                    <TableCell>₹0.45</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Box Top</TableCell>
-                    <TableCell>Corrugated Cardboard 3mm</TableCell>
-                    <TableCell>18.0 × 10.0</TableCell>
-                    <TableCell>1</TableCell>
-                    <TableCell>₹0.45</TableCell>
-                    <TableCell>₹0.45</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Side Panels (Long)</TableCell>
-                    <TableCell>Corrugated Cardboard 3mm</TableCell>
-                    <TableCell>18.0 × 5.0</TableCell>
-                    <TableCell>2</TableCell>
-                    <TableCell>₹0.25</TableCell>
-                    <TableCell>₹0.50</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Side Panels (Short)</TableCell>
-                    <TableCell>Corrugated Cardboard 3mm</TableCell>
-                    <TableCell>10.0 × 5.0</TableCell>
-                    <TableCell>2</TableCell>
-                    <TableCell>₹0.15</TableCell>
-                    <TableCell>₹0.30</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Protective Insert</TableCell>
-                    <TableCell>Foam Padding</TableCell>
-                    <TableCell>17.0 × 9.0 × 1.0</TableCell>
-                    <TableCell>1</TableCell>
-                    <TableCell>₹0.35</TableCell>
-                    <TableCell>₹0.35</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Adhesive Tape</TableCell>
-                    <TableCell>Paper Tape</TableCell>
-                    <TableCell>50cm length</TableCell>
-                    <TableCell>1</TableCell>
-                    <TableCell>₹0.08</TableCell>
-                    <TableCell>₹0.08</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>Material Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Corrugated Cardboard</span>
-                  <span className="font-semibold">856 cm²</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Foam Padding</span>
-                  <span className="font-semibold">153 cm²</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Adhesive Tape</span>
-                  <span className="font-semibold">50 cm</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between items-center font-semibold">
-                  <span>Total Weight</span>
-                  <span className="text-blue-600">45g</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg bg-gradient-to-r from-green-50 to-green-100">
-              <CardHeader>
-                <CardTitle className="text-green-800">Environmental Impact</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Check className="w-4 h-4 text-green-600" />
-                  <span className="text-green-700 text-sm">100% Recyclable Materials</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Check className="w-4 h-4 text-green-600" />
-                  <span className="text-green-700 text-sm">Biodegradable Components</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Check className="w-4 h-4 text-green-600" />
-                  <span className="text-green-700 text-sm">Minimal Plastic Usage</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Check className="w-4 h-4 text-green-600" />
-                  <span className="text-green-700 text-sm">Carbon Footprint: Low</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="flex justify-end space-x-4">
-            <Button 
-              variant="outline" 
-              onClick={() => navigateToScreen('design')}
-              className="rounded-lg"
-            >
-              Back to Design
-            </Button>
-            <Button 
-              onClick={() => navigateToScreen('quotation')}
-              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg"
-            >
-              Generate Quotation
-            </Button>
-          </div>
-        </motion.div>
-      </div>
-    </div>
-  );
-
-  const QuotationScreen = () => (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      <Header title="Quotation" onBack={() => navigateToScreen('bom')} />
-      
-      <div className="max-w-4xl mx-auto p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
-        >
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Packaging Quotation</h2>
-            <p className="text-gray-600">Detailed cost breakdown and pricing</p>
-          </div>
-
-          <Card className="border-0 shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-t-lg">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-xl">SmartPack AI Quotation</CardTitle>
-                  <p className="text-blue-100">Quote #SP-2024-001</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-blue-100">Date: {new Date().toLocaleDateString()}</p>
-                  <p className="text-blue-100">Valid until: {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-6">
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-4">Product Details</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Product:</span>
-                      <span className="ml-2 font-medium">Smartphone Packaging</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Dimensions:</span>
-                      <span className="ml-2 font-medium">18 × 10 × 5 cm</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Material:</span>
-                      <span className="ml-2 font-medium">Corrugated Cardboard</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Quantity:</span>
-                      <span className="ml-2 font-medium">100 units</span>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-4">Cost Breakdown</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700">Materials Cost (100 units)</span>
-                      <span className="font-medium">₹213.00</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700">Manufacturing & Assembly</span>
-                      <span className="font-medium">₹45.00</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700">Quality Control</span>
-                      <span className="font-medium">₹12.00</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700">Design & Setup</span>
-                      <span className="font-medium">₹25.00</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between items-center font-medium">
-                      <span>Subtotal</span>
-                      <span>₹295.00</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700">Tax (8.5%)</span>
-                      <span>₹25.08</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700">Shipping</span>
-                      <span>₹15.00</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between items-center text-xl font-bold text-green-600">
-                      <span>Total</span>
-                      <span>₹335.08</span>
-                    </div>
-                    <div className="text-right text-sm text-gray-600">
-                      Per unit: ₹3.35
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-4">Additional Services</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[
-                      { service: 'Custom Printing', price: '+₹45.00', desc: 'Logo and branding' },
-                      { service: 'Express Delivery', price: '+₹25.00', desc: '2-3 business days' },
-                      { service: 'Premium Materials', price: '+₹38.00', desc: 'Upgrade to premium cardboard' },
-                      { service: 'Assembly Service', price: '+₹22.00', desc: 'Pre-assembled boxes' }
-                    ].map((item, index) => (
-                      <div key={index} className="p-3 border border-gray-200 rounded-lg">
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="font-medium text-gray-900">{item.service}</span>
-                          <span className="text-blue-600 font-semibold">{item.price}</span>
-                        </div>
-                        <p className="text-sm text-gray-600">{item.desc}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-yellow-800 mb-2">Terms & Conditions</h4>
-                  <ul className="text-sm text-yellow-700 space-y-1">
-                    <li>• Payment due within 30 days of invoice date</li>
-                    <li>• Prices valid for 30 days from quote date</li>
-                    <li>• Minimum order quantity: 50 units</li>
-                    <li>• Production time: 5-7 business days</li>
-                    <li>• Free revision included, additional revisions $15 each</li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-between">
-            <Button 
-              variant="outline" 
-              onClick={() => navigateToScreen('bom')}
-              className="rounded-lg"
-            >
-              Back to BOM
-            </Button>
-            <div className="flex space-x-4">
-              <Button 
-                variant="outline" 
-                className="rounded-lg"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download PDF
-              </Button>
-              <Button 
-                variant="outline" 
-                className="rounded-lg"
-              >
-                <Share className="w-4 h-4 mr-2" />
-                Share Quote
-              </Button>
-              <Button 
-                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg"
-              >
-                Accept Quote
-              </Button>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-    </div>
-  );
-
-  const ProfileScreen = () => (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      <Header title="Profile & Settings" onBack={() => navigateToScreen('dashboard')} />
-      
-      <div className="max-w-4xl mx-auto p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
-        >
-          <Card className="border-0 shadow-xl">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-6">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center">
-                  <User className="w-10 h-10 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">John Doe</h2>
-                  <p className="text-gray-600">john.doe@example.com</p>
-                  <Badge className="mt-2">Premium Member</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>Account Statistics</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Projects Created</span>
-                  <span className="font-semibold text-blue-600">12</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Quotations Generated</span>
-                  <span className="font-semibold text-green-600">8</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Total Savings</span>
-                  <span className="font-semibold text-purple-600">₹1,245</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Member Since</span>
-                  <span className="font-semibold">Jan 2024</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start rounded-lg"
-                  onClick={() => navigateToScreen('upload')}
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Start New Project
-                </Button>
-                <Button variant="outline" className="w-full justify-start rounded-lg">
-                  <FileText className="w-4 h-4 mr-2" />
-                  View Saved Quotations
-                </Button>
-                <Button variant="outline" className="w-full justify-start rounded-lg">
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Billing & Invoices
-                </Button>
-                <Button variant="outline" className="w-full justify-start rounded-lg">
-                  <User className="w-4 h-4 mr-2" />
-                  Edit Profile
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle>Recent Projects</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  {
-                    name: 'Smartphone Packaging',
-                    date: '2 hours ago',
-                    status: 'Completed',
-                    cost: '₹335.08'
-                  },
-                  {
-                    name: 'Headphones Box Design',
-                    date: '1 day ago',
-                    status: 'Quote Generated',
-                    cost: '₹142.50'
-                  },
-                  {
-                    name: 'Watch Packaging',
-                    date: '3 days ago',
-                    status: 'Completed',
-                    cost: '₹89.25'
-                  },
-                  {
-                    name: 'Electronics Bundle',
-                    date: '1 week ago',
-                    status: 'Completed',
-                    cost: '₹456.80'
-                  }
-                ].map((project, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h4 className="font-medium text-gray-900">{project.name}</h4>
-                      <p className="text-sm text-gray-600">{project.date}</p>
-                    </div>
-                    <div className="text-right">
-                      <Badge 
-                        variant={project.status === 'Completed' ? 'default' : 'secondary'}
-                        className="mb-1"
-                      >
-                        {project.status}
-                      </Badge>
-                      <p className="text-sm font-semibold text-green-600">{project.cost}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg border-red-200">
-            <CardHeader>
-              <CardTitle className="text-red-700">Account Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-start rounded-lg text-red-600 border-red-200 hover:bg-red-50">
-                Export All Data
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full justify-start rounded-lg text-red-600 border-red-200 hover:bg-red-50"
-                onClick={() => navigateToScreen('login')}
-              >
-                Sign Out
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-    </div>
-  );
-
-  const Header = ({ title, onBack }: { title: string; onBack: () => void }) => (
-    <div className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-6 py-4">
-        <div className="flex items-center space-x-4">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onBack}
-            className="rounded-lg"
+        <div className="text-center pb-12">
+          <Button
+            size="lg"
+            onClick={() => {
+              if (!appData.topViewImage || !appData.sideViewImage || !appData.knownWidth) {
+                alert("Please upload both images and enter the known width");
+                return;
+              }
+              setCurrentPage("detection");
+            }}
+            disabled={!appData.topViewImage || !appData.sideViewImage || !appData.knownWidth}
+            className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl disabled:opacity-50"
           >
-            <ArrowLeft className="w-4 h-4" />
+            Run Detection <ChevronRight className="w-5 h-5 ml-2" />
           </Button>
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
-          </div>
         </div>
       </div>
     </div>
   );
+}
 
-  const ProgressIndicator = ({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) => (
-    <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-50 to-purple-50">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">Progress</span>
-          <span className="text-sm text-gray-600">{currentStep} of {totalSteps}</span>
-        </div>
-        <Progress value={(currentStep / totalSteps) * 100} className="h-2" />
-        <div className="flex justify-between mt-2 text-xs text-gray-500">
-          <span>Upload</span>
-          <span>Analysis</span>
-          <span>Material</span>
-          <span>Recommendation</span>
-          <span>Design</span>
-          <span>Quote</span>
-        </div>
-      </CardContent>
-    </Card>
-  );
+// ─── Real Camera Page ──────────────────────────────────────────────────────────
+function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedImage, setCapturedImage, handleUseImage, setAppData, appData }: PageProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
 
-  // Render the current screen
-  const renderScreen = () => {
-    switch (currentScreen) {
-      case 'splash':
-        return <SplashScreen />;
-      case 'login':
-        return <LoginScreen />;
-      case 'signup':
-        return <SignupScreen />;
-      case 'dashboard':
-        return <DashboardScreen />;
-      case 'upload':
-        return <UploadScreen />;
-      case 'analysis':
-        return <AnalysisScreen />;
-      case 'material':
-        return <MaterialScreen />;
-      case 'recommendation':
-        return <RecommendationScreen />;
-      case 'design':
-        return <DesignScreen />;
-      case 'bom':
-        return <BOMScreen />;
-      case 'quotation':
-        return <QuotationScreen />;
-      case 'profile':
-        return <ProfileScreen />;
-      default:
-        return <DashboardScreen />;
+  const viewLabel = currentCameraView === "top" ? "Top View" : "Side View";
+
+  const startCamera = useCallback(async (facing: "environment" | "user") => {
+    // Stop any existing stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+
+    setIsLoading(true);
+    setCameraError(null);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: facing,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      });
+
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+          setIsLoading(false);
+        };
+      }
+    } catch (err: any) {
+      console.error("Camera error:", err);
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        setCameraError("Camera permission denied. Please allow camera access in your browser settings.");
+      } else if (err.name === "NotFoundError") {
+        setCameraError("No camera found on this device.");
+      } else if (err.name === "NotReadableError") {
+        setCameraError("Camera is already in use by another application.");
+      } else {
+        setCameraError("Could not access camera. Please try uploading an image instead.");
+      }
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Start camera when component mounts
+  useEffect(() => {
+    if (!capturedImage) {
+      startCamera(facingMode);
+    }
+    // Cleanup: stop camera when leaving this page
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    };
+  }, []);
+
+  // Switch camera (front/back)
+  const handleSwitchCamera = () => {
+    const newFacing = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(newFacing);
+    startCamera(newFacing);
+  };
+
+  // Take a photo from the video stream
+  const handleCapture = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Mirror if using front camera
+    if (facingMode === "user") {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.92);
+    setCapturedImage(imageDataUrl);
+
+    // Stop the stream after capturing
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
   };
 
+  const handleRetake = () => {
+    setCapturedImage(null);
+    startCamera(facingMode);
+  };
+
+  const handleCancel = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setCurrentPage("capture");
+  };
+
   return (
-    <div className="min-h-screen">
-      {renderScreen()}
+    <div className="fixed inset-0 bg-black z-50">
+      {/* Hidden canvas for capturing */}
+      <canvas ref={canvasRef} className="hidden" />
+
+      <div className="relative h-full w-full">
+        {!capturedImage ? (
+          <>
+            {/* Live video feed */}
+            {!cameraError && (
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ transform: facingMode === "user" ? "scaleX(-1)" : "none" }}
+              />
+            )}
+
+            {/* Loading state */}
+            {isLoading && !cameraError && (
+              <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
+                <div className="text-center text-white">
+                  <div className="w-12 h-12 border-4 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-sm">Starting camera...</p>
+                </div>
+              </div>
+            )}
+
+            {/* Error state */}
+            {cameraError && (
+              <div className="absolute inset-0 bg-gray-900 flex items-center justify-center p-8">
+                <div className="text-center text-white max-w-sm">
+                  <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <X className="w-8 h-8 text-red-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">Camera Error</h3>
+                  <p className="text-sm text-gray-400 mb-6">{cameraError}</p>
+                  <Button onClick={handleCancel} variant="outline" className="border-white text-white hover:bg-white/10">
+                    Go Back & Upload Instead
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Overlay: corner guides */}
+            {!cameraError && !isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center p-8 pointer-events-none">
+                <div className="relative w-full max-w-2xl aspect-[4/3]">
+                  <div className="absolute inset-0 border-2 border-white/30 rounded-2xl">
+                    <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-blue-400 rounded-tl"></div>
+                    <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-blue-400 rounded-tr"></div>
+                    <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-blue-400 rounded-bl"></div>
+                    <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-blue-400 rounded-br"></div>
+                  </div>
+                  <div className="absolute top-3 left-3 bg-blue-500/90 px-3 py-1 rounded-lg">
+                    <p className="text-white text-xs font-semibold">{viewLabel}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Top bar: close button */}
+            <div className="absolute top-0 left-0 right-0 flex justify-between items-center p-4">
+              <Button size="sm" variant="ghost" onClick={handleCancel} className="text-white hover:bg-white/20 rounded-full w-10 h-10 p-0">
+                <X className="w-5 h-5" />
+              </Button>
+              {/* Switch camera button (only if no error) */}
+              {!cameraError && (
+                <Button size="sm" variant="ghost" onClick={handleSwitchCamera} className="text-white hover:bg-white/20 rounded-full w-10 h-10 p-0" title="Switch camera">
+                  <SwitchCamera className="w-5 h-5" />
+                </Button>
+              )}
+            </div>
+
+            {/* Bottom bar: capture button */}
+            {!cameraError && !isLoading && (
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-8">
+                <div className="flex justify-center items-center space-x-6">
+                  <p className="text-white/70 text-xs absolute bottom-24 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                    Position object within the frame
+                  </p>
+                  {/* Shutter button */}
+                  <button
+                    onClick={handleCapture}
+                    className="w-20 h-20 rounded-full bg-white border-4 border-white/50 shadow-2xl hover:scale-95 active:scale-90 transition-transform flex items-center justify-center"
+                  >
+                    <div className="w-14 h-14 rounded-full bg-white border-2 border-gray-300"></div>
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          /* Preview captured image */
+          <div className="absolute inset-0 bg-black flex flex-col items-center justify-center p-8">
+            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-2xl">
+              <div className="relative">
+                <img src={capturedImage} alt="Captured" className="w-full aspect-[4/3] object-cover rounded-2xl" />
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-green-500 px-4 py-2 rounded-lg flex items-center space-x-2 shadow-lg">
+                  <Check className="w-5 h-5 text-white" />
+                  <span className="text-white font-semibold text-sm">Photo Captured!</span>
+                </div>
+              </div>
+              <div className="flex justify-center space-x-4 mt-8">
+                <Button size="lg" variant="outline" onClick={handleRetake} className="rounded-xl border-white text-white hover:bg-white/10 px-8">
+                  <RotateCcw className="w-4 h-4 mr-2" />Retake
+                </Button>
+                <Button size="lg" onClick={handleUseImage} className="bg-blue-500 hover:bg-blue-600 text-white rounded-xl px-8">
+                  <Check className="w-4 h-4 mr-2" />Use Photo
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DetectionPage({ appData, currentPage, setCurrentPage }: PageProps) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
+      <Navbar showBack currentPage={currentPage} setCurrentPage={setCurrentPage} />
+      <ProgressIndicator currentStep={pageStepsMap[currentPage]} totalSteps={6} />
+      <div className="max-w-6xl mx-auto px-6 py-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
+          <Badge className="mb-4 bg-green-100 text-green-700 border-0"><Scan className="w-3 h-3 mr-1" />Step 2 of 6</Badge>
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">Object Detection & Dimensions</h1>
+          <p className="text-lg text-gray-600">AI has analyzed your object and calculated real-world dimensions</p>
+        </motion.div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
+            <CardHeader><CardTitle className="flex items-center space-x-2"><Scan className="w-5 h-5 text-green-600" /><span>Object Detection Results</span></CardTitle></CardHeader>
+            <CardContent>
+              <div className="relative mb-6">
+                {appData.topViewImage && <ImageWithFallback src={appData.topViewImage.url} alt="Detected object" className="w-full h-64 object-cover rounded-xl" />}
+                <div className="absolute inset-8 border-4 border-green-500 rounded-lg">
+                  <div className="absolute -top-3 -left-3 w-6 h-6 bg-green-500 rounded-full"></div>
+                  <div className="absolute -top-3 -right-3 w-6 h-6 bg-green-500 rounded-full"></div>
+                  <div className="absolute -bottom-3 -left-3 w-6 h-6 bg-green-500 rounded-full"></div>
+                  <div className="absolute -bottom-3 -right-3 w-6 h-6 bg-green-500 rounded-full"></div>
+                </div>
+                <Badge className="absolute top-4 left-4 bg-green-500 border-0 text-white shadow-lg z-10 px-3 py-1.5 text-sm font-semibold"><Check className="w-4 h-4 mr-1.5" />Analysis Complete</Badge>
+              </div>
+              <div className="bg-gradient-to-br from-green-50 to-teal-50 rounded-xl p-6 border border-green-200">
+                <Label className="text-sm text-gray-600 mb-2 block">Detected Object:</Label>
+                <p className="text-3xl font-bold text-gray-900 mb-4">{appData.detectedObject}</p>
+                <Label className="text-sm text-gray-600 mb-2 block">Detection Confidence:</Label>
+                <div className="flex items-end space-x-2 mb-3">
+                  <span className="text-4xl font-bold text-green-600">{appData.confidence}</span>
+                  <span className="text-xl text-gray-600 mb-1">%</span>
+                </div>
+                <Progress value={appData.confidence} className="h-3" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
+            <CardHeader><CardTitle className="flex items-center space-x-2"><Ruler className="w-5 h-5 text-blue-600" /><span>Calculated Dimensions</span></CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-4"><p className="text-sm opacity-90 mb-1">Length</p><p className="text-3xl font-bold">{appData.dimensions.length}</p><p className="text-xs opacity-80">centimeters</p></div>
+                <div className="bg-gradient-to-br from-teal-500 to-teal-600 text-white rounded-xl p-4"><p className="text-sm opacity-90 mb-1">Width</p><p className="text-3xl font-bold">{appData.dimensions.width}</p><p className="text-xs opacity-80">centimeters</p></div>
+                <div className="bg-gradient-to-br from-cyan-500 to-cyan-600 text-white rounded-xl p-4"><p className="text-sm opacity-90 mb-1">Height</p><p className="text-3xl font-bold">{appData.dimensions.height}</p><p className="text-xs opacity-80">centimeters</p></div>
+                <div className="bg-gradient-to-br from-violet-500 to-violet-600 text-white rounded-xl p-4"><p className="text-sm opacity-90 mb-1">Volume</p><p className="text-3xl font-bold">{appData.dimensions.volume.toFixed(1)}</p><p className="text-xs opacity-80">cubic cm</p></div>
+              </div>
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <div className="flex items-start space-x-3"><Eye className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" /><p className="text-sm text-gray-700">Dimensions calculated using computer vision and calibrated with your known reference measurement.</p></div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="text-center">
+          <Button size="lg" onClick={() => setCurrentPage("materials")} className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl">
+            Proceed to Material Identification <ChevronRight className="w-5 h-5 ml-2" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: PageProps) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
+      <Navbar showBack currentPage={currentPage} setCurrentPage={setCurrentPage} />
+      <ProgressIndicator currentStep={pageStepsMap[currentPage]} totalSteps={6} />
+      <div className="max-w-5xl mx-auto px-6 py-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
+          <Badge className="mb-4 bg-purple-100 text-purple-700 border-0"><Layers className="w-3 h-3 mr-1" />Step 3 of 6</Badge>
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">Material Identification & Weight Estimation</h1>
+          <p className="text-lg text-gray-600">AI-powered texture analysis and density-based weight prediction</p>
+        </motion.div>
+
+        <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm mb-8">
+          <CardHeader><CardTitle className="flex items-center space-x-2"><Layers className="w-5 h-5 text-violet-600" /><span>Material Composition Analysis</span></CardTitle></CardHeader>
+          <CardContent className="space-y-6">
+            {Object.entries(appData.materials).map(([material, percentage], index) => (
+              <motion.div key={material} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${material === "cardboard" ? "bg-gradient-to-br from-amber-500 to-orange-500" : material === "plastic" ? "bg-gradient-to-br from-blue-500 to-cyan-500" : "bg-gradient-to-br from-gray-500 to-gray-600"}`}>
+                      <Box className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="text-lg font-semibold text-gray-900 capitalize">{material}</span>
+                  </div>
+                  <span className="text-2xl font-bold text-gray-900">{percentage}%</span>
+                </div>
+                <Progress value={percentage} className="h-4" />
+              </motion.div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm mb-8">
+          <CardHeader><CardTitle className="flex items-center space-x-2"><Package className="w-5 h-5 text-orange-600" /><span>Material Properties (AI Detected)</span></CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-gray-700">Object Category</Label>
+                <div className="w-full px-4 py-4 bg-gradient-to-r from-blue-50 to-teal-50 border-2 border-blue-200 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold text-gray-900">{appData.materialProperties.category}</span>
+                    <Badge className="bg-blue-600 text-white border-0"><Check className="w-3 h-3 mr-1" />Detected</Badge>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-gray-700">Fragility Level</Label>
+                <div className="w-full px-4 py-4 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold text-gray-900">{appData.materialProperties.fragility}</span>
+                    <Badge className="bg-orange-600 text-white border-0"><Check className="w-3 h-3 mr-1" />Detected</Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <Card className="border-0 shadow-xl bg-gradient-to-br from-green-500 to-teal-600 text-white">
+            <CardContent className="p-8 text-center">
+              <Weight className="w-12 h-12 mx-auto mb-4 opacity-80" />
+              <p className="text-lg font-medium mb-2 opacity-90">Estimated Weight (AI Predicted)</p>
+              <div className="flex items-end justify-center space-x-2 mb-2">
+                <span className="text-6xl font-bold">{appData.estimatedWeight}</span>
+                <span className="text-2xl mb-3 opacity-80">kg</span>
+              </div>
+              <p className="text-sm opacity-80">Based on material density analysis</p>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
+            <CardContent className="p-8">
+              <div className="flex items-center justify-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-teal-600 rounded-xl flex items-center justify-center"><Ruler className="w-6 h-6 text-white" /></div>
+              </div>
+              <Label htmlFor="real-weight" className="text-base font-semibold text-gray-900 mb-4 block text-center">Enter Real Weight (Optional)</Label>
+              <input
+                id="real-weight"
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                placeholder="Example: 0.4 kg"
+                value={appData.realWeight}
+                onChange={(e) => setAppData((prev) => ({ ...prev, realWeight: e.target.value }))}
+                className="text-center text-lg font-semibold h-12 bg-white border border-gray-300 focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.15)] rounded-xl mb-4 w-full px-3 focus:outline-none"
+              />
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                <p className="text-xs text-gray-700 text-center">If provided, this value will be used for packaging calculations.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="text-center pb-12">
+          <Button size="lg" onClick={() => setCurrentPage("packaging")} className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl">
+            Generate Packaging Recommendation <ChevronRight className="w-5 h-5 ml-2" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
+      <Navbar showBack currentPage={currentPage} setCurrentPage={setCurrentPage} />
+      <ProgressIndicator currentStep={pageStepsMap[currentPage]} totalSteps={6} />
+      <div className="max-w-7xl mx-auto px-6 py-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Packaging Recommendation</h1>
+          <p className="text-gray-600">Intelligent box design based on object properties and industry rules</p>
+        </motion.div>
+
+        <Card className="border-0 shadow-xl bg-white mb-8">
+          <CardHeader><CardTitle className="flex items-center space-x-2"><Box className="w-5 h-5 text-orange-600" /><span>Optimal Packaging Selection</span></CardTitle></CardHeader>
+          <CardContent>
+            <div className="bg-amber-50 rounded-lg p-6 border border-amber-200 mb-6">
+              <p className="text-sm text-gray-700 mb-4">
+                Based on your object material ({Object.entries(appData.materials).map(([mat, val]) => `${mat.charAt(0).toUpperCase() + mat.slice(1)}: ${val}%`).join(", ")}), volume ({appData.dimensions.volume.toFixed(1)} cm³), and weight ({appData.estimatedWeight} kg), the system recommends:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                <div className="bg-white rounded-lg p-4 border border-amber-300"><p className="text-xs text-gray-600 mb-1">Packaging Material</p><p className="font-bold text-orange-600">{appData.packaging.type}</p></div>
+                <div className="bg-white rounded-lg p-4 border border-amber-300"><p className="text-xs text-gray-600 mb-1">Box Dimensions</p><p className="font-bold text-orange-600">{appData.dimensions.length + 2} × {appData.dimensions.width + 2} × {appData.dimensions.height + 2} cm</p></div>
+                <div className="bg-white rounded-lg p-4 border border-amber-300"><p className="text-xs text-gray-600 mb-1">Protection Level</p><p className="font-bold text-orange-600">{appData.packaging.cushioning}</p></div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Box Design Preview</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <Card className="border-0 shadow-lg bg-white">
+            <CardContent className="p-8">
+              <div className="flex items-center space-x-2 mb-6"><FileText className="w-5 h-5 text-blue-600" /><h3 className="font-semibold text-gray-900">2D Flat Layout</h3></div>
+              <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-12 flex flex-col items-center justify-center min-h-[400px]">
+                <svg width="240" height="280" viewBox="0 0 240 280" className="mx-auto">
+                  <rect x="70" y="90" width="100" height="100" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 4" />
+                  <rect x="70" y="30" width="100" height="55" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 4" />
+                  <text x="120" y="60" textAnchor="middle" fill="#9CA3AF" fontSize="11">Top</text>
+                  <rect x="70" y="195" width="100" height="55" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 4" />
+                  <text x="120" y="225" textAnchor="middle" fill="#9CA3AF" fontSize="11">Bottom</text>
+                  <rect x="5" y="90" width="60" height="100" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 4" />
+                  <text x="35" y="145" textAnchor="middle" fill="#9CA3AF" fontSize="11">Side</text>
+                  <rect x="175" y="90" width="60" height="100" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 4" />
+                  <text x="205" y="145" textAnchor="middle" fill="#9CA3AF" fontSize="11">Side</text>
+                  <text x="120" y="135" textAnchor="middle" fill="#6B7280" fontSize="12" fontWeight="500">18cm × 10cm × 5cm</text>
+                </svg>
+                <p className="text-sm text-gray-600 mt-6">Unfolded box template with cut lines</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-lg bg-white">
+            <CardContent className="p-8">
+              <div className="flex items-center space-x-2 mb-6"><Box className="w-5 h-5 text-purple-600" /><h3 className="font-semibold text-gray-900">3D Interactive Preview</h3></div>
+              <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-purple-100 rounded-lg p-12 flex flex-col items-center justify-center min-h-[400px]">
+                <div className="relative w-48 h-48 flex items-center justify-center mb-6">
+                  <div className="relative transform rotate-12">
+                    <div className="relative w-36 h-36">
+                      <div className="absolute inset-0 bg-gradient-to-br from-orange-300 to-orange-400 border-2 border-orange-500 rounded-lg shadow-2xl flex items-center justify-center"><div className="text-orange-700 text-center"><p className="text-sm font-bold">3D Box</p></div></div>
+                      <div className="absolute -top-9 left-9 w-36 h-18 bg-gradient-to-br from-orange-200 to-orange-300 border-2 border-orange-400 rounded-lg transform -skew-y-12 origin-bottom-left shadow-xl"></div>
+                      <div className="absolute top-9 -right-9 w-18 h-36 bg-gradient-to-br from-orange-400 to-orange-500 border-2 border-orange-600 rounded-lg transform skew-x-12 origin-top-left shadow-xl"></div>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-700 mb-3">Interactive 3D model</p>
+                <Button size="sm" variant="outline" className="border-gray-300 text-gray-700 bg-white hover:bg-gray-50"><RotateCcw className="w-3 h-3 mr-2" />Rotate View</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="text-center">
+          <Button size="lg" onClick={() => setCurrentPage("bom")} className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl">
+            View Bill of Materials <ChevronRight className="w-5 h-5 ml-2" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BOMPage({ appData, currentPage, setCurrentPage }: PageProps) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
+      <Navbar showBack currentPage={currentPage} setCurrentPage={setCurrentPage} />
+      <ProgressIndicator currentStep={pageStepsMap[currentPage]} totalSteps={6} />
+      <div className="max-w-5xl mx-auto px-6 py-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
+          <Badge className="mb-4 bg-green-100 text-green-700 border-0"><FileText className="w-3 h-3 mr-1" />Step 5 of 6</Badge>
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">Bill of Materials</h1>
+          <p className="text-lg text-gray-600">Complete breakdown of packaging components and quantities</p>
+        </motion.div>
+
+        <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2"><FileText className="w-5 h-5 text-green-600" /><span>Materials List</span></CardTitle>
+            <p className="text-sm text-gray-600 mt-2">Generated for {appData.packaging.type} box with dimensions {appData.dimensions.length} × {appData.dimensions.width} × {appData.dimensions.height} cm</p>
+          </CardHeader>
+          <CardContent className="p-8">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="font-semibold">Material</TableHead>
+                  <TableHead className="font-semibold">Quantity</TableHead>
+                  <TableHead className="font-semibold">Unit</TableHead>
+                  <TableHead className="font-semibold">Estimated Usage</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {appData.bom.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell className="font-medium">{item.material}</TableCell>
+                    <TableCell>{item.quantity}</TableCell>
+                    <TableCell>{item.unit}</TableCell>
+                    <TableCell className="text-gray-600">{item.usage}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-500 to-teal-600 text-white mb-8">
+          <CardContent className="p-8 text-center">
+            <FileText className="w-12 h-12 mx-auto mb-4 opacity-80" />
+            <p className="text-lg font-medium mb-2 opacity-90">Total Material Usage</p>
+            <p className="text-5xl font-bold mb-2">{appData.bom.length}</p>
+            <p className="text-sm opacity-80">Material types required</p>
+          </CardContent>
+        </Card>
+
+        <div className="text-center">
+          <Button size="lg" onClick={() => setCurrentPage("pricing")} className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl">
+            Generate Pricing & Quotation <ChevronRight className="w-5 h-5 ml-2" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageProps) {
+  const quantity = 100;
+  const materialsCost = 213.0;
+  const manufacturingCost = 45.0;
+  const qualityControl = 12.0;
+  const designSetup = 25.0;
+  const subtotal = materialsCost + manufacturingCost + qualityControl + designSetup;
+  const taxRate = 0.085;
+  const tax = subtotal * taxRate;
+  const shipping = 15.0;
+  const total = subtotal + tax + shipping;
+
+  const resetData: AppData = {
+    topViewImage: null, sideViewImage: null, knownWidth: "",
+    detectedObject: "Plastic Bottle", confidence: 94,
+    dimensions: { length: 22.5, width: 7.8, height: 16.4, volume: 2876.4 },
+    materials: { cardboard: 72, plastic: 28 },
+    materialProperties: { category: "Consumer Goods", fragility: "Moderate" },
+    estimatedWeight: 0.38, realWeight: "",
+    packaging: { type: "Corrugated Cardboard Box", boxDimensions: "28 × 14 × 22 cm", cushioning: "Bubble Wrap + Edge Protectors" },
+    bom: [
+      { material: "Corrugated Sheet", quantity: "0.8", unit: "sq.m", usage: "Box Material" },
+      { material: "Thermocol Padding", quantity: "2", unit: "pieces", usage: "Cushioning" },
+      { material: "Bubble Wrap", quantity: "1.2", unit: "meters", usage: "Inner Protection" },
+      { material: "Packing Tape", quantity: "1", unit: "roll", usage: "Sealing" },
+    ],
+    pricing: { materialCost: 45.5, packagingCost: 28.0, cushioningCost: 12.5, totalCost: 86.0, quotationId: "PKS-2026-001" },
+    companyDetails: { companyName: "", companyTagline: "", name: "", address: "", phone: "", email: "" },
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
+      <Navbar showBack currentPage={currentPage} setCurrentPage={setCurrentPage} />
+      <ProgressIndicator currentStep={pageStepsMap[currentPage]} totalSteps={6} />
+      <div className="max-w-5xl mx-auto px-6 py-12 pb-24">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
+          <Badge className="mb-4 bg-green-100 text-green-700 border-0"><Check className="w-3 h-3 mr-1" />Step 6 of 6 - Complete</Badge>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Pricing & Quotation</h1>
+          <p className="text-lg text-gray-600">Professional packaging quotation ready for download</p>
+        </motion.div>
+
+        <Card className="border-0 shadow-2xl bg-white mb-8">
+          <div className="p-8 border-b-2 border-gray-200">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <h1 className="text-3xl font-bold text-green-700 mb-2">{appData.companyDetails.companyName || "YOUR COMPANY NAME"}</h1>
+                <p className="text-gray-600 text-sm mb-4">{appData.companyDetails.companyTagline || "Your Company Tagline"}</p>
+                <div className="text-sm text-gray-700 space-y-1 mt-6">
+                  {appData.companyDetails.name && <p className="font-semibold">{appData.companyDetails.name}</p>}
+                  {appData.companyDetails.address && <p>{appData.companyDetails.address}</p>}
+                  {appData.companyDetails.phone && <p>Phone: {appData.companyDetails.phone}</p>}
+                  {appData.companyDetails.email && <p>Email: {appData.companyDetails.email}</p>}
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="text-right"><h2 className="text-3xl font-bold text-pink-300 mb-4">[Price Quote]</h2></div>
+                <div className="bg-amber-50 p-4 rounded-lg space-y-2">
+                  <div className="flex justify-between"><span className="font-semibold text-gray-700">DATE:</span><span className="text-gray-900">{new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}</span></div>
+                  <div className="flex justify-between"><span className="font-semibold text-gray-700">Quotation #:</span><span className="text-gray-900">{appData.pricing.quotationId}</span></div>
+                </div>
+                <div className="bg-orange-50 p-3 rounded-lg text-sm">
+                  <div className="flex justify-between mb-1"><span className="italic text-gray-600">Quotation valid until:</span><span className="text-gray-900">{new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}</span></div>
+                  <div className="flex justify-between"><span className="italic text-gray-600">Prepared by:</span><span className="text-gray-900">{appData.companyDetails.companyName || "Your Company"} AI System</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <CardContent className="p-8">
+            <div className="mb-6 pb-6 border-b border-gray-200">
+              <h3 className="font-bold text-gray-900 mb-3">Quotation For:</h3>
+              <div className="text-sm text-gray-700 space-y-1">
+                <p className="font-semibold">{appData.detectedObject} Packaging</p>
+                <p>Dimensions: {appData.dimensions.length} × {appData.dimensions.width} × {appData.dimensions.height} cm</p>
+                <p>Material: {appData.packaging.type}</p>
+                <p>Quantity: {quantity} units</p>
+              </div>
+            </div>
+            <div className="mb-6 overflow-x-auto">
+              <table className="w-full border border-gray-300 text-sm">
+                <thead className="bg-amber-50">
+                  <tr>
+                    <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700">QUANTITY</th>
+                    <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700">DESCRIPTION</th>
+                    <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700">UNIT PRICE</th>
+                    <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-gray-700">TAXABLE?</th>
+                    <th className="border border-gray-300 px-3 py-2 text-right font-semibold text-gray-700">AMOUNT</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white">
+                  <tr>
+                    <td className="border border-gray-300 px-3 py-3 text-gray-900 font-medium">{quantity}</td>
+                    <td className="border border-gray-300 px-3 py-3 text-gray-900">{appData.packaging.type} - {appData.dimensions.length}×{appData.dimensions.width}×{appData.dimensions.height}cm</td>
+                    <td className="border border-gray-300 px-3 py-3 text-gray-900">₹ {(materialsCost / quantity).toFixed(2)}</td>
+                    <td className="border border-gray-300 px-3 py-3 text-center text-gray-900">T</td>
+                    <td className="border border-gray-300 px-3 py-3 text-right text-gray-900 font-medium">₹ {materialsCost.toFixed(2)}</td>
+                  </tr>
+                  {[...Array(3)].map((_, i) => (
+                    <tr key={i}>
+                      <td className="border border-gray-300 px-3 py-6"></td>
+                      <td className="border border-gray-300 px-3 py-6"></td>
+                      <td className="border border-gray-300 px-3 py-6"></td>
+                      <td className="border border-gray-300 px-3 py-6"></td>
+                      <td className="border border-gray-300 px-3 py-6"></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end mb-8">
+              <div className="w-full md:w-1/2 bg-amber-50 border border-gray-300 rounded-lg">
+                <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">SUBTOTAL</span><span className="font-semibold text-gray-900">₹ {subtotal.toFixed(2)}</span></div>
+                <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">TAX RATE</span><span className="font-semibold text-gray-900">{(taxRate * 100).toFixed(2)}%</span></div>
+                <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">SALES TAX</span><span className="font-semibold text-gray-900">{tax.toFixed(2)}</span></div>
+                <div className="flex justify-between px-4 py-4 bg-white rounded-b-lg"><span className="text-xl font-bold text-gray-900">TOTAL</span><span className="text-xl font-bold text-green-600">₹ {total.toFixed(2)}</span></div>
+              </div>
+            </div>
+            <div className="text-center"><p className="text-lg font-bold text-green-700">THANK YOU FOR YOUR BUSINESS!</p></div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-50 to-teal-50 mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2"><Building2 className="w-5 h-5 text-blue-600" /><span>Edit Your Company Details</span></CardTitle>
+            <p className="text-sm text-gray-600 mt-2">Customize the letterhead and contact information that appears in your quotation</p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="bg-white rounded-lg p-6 shadow-sm">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">Letterhead Information</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="companyName" className="text-sm font-medium text-gray-700 mb-1 block">Company Name</Label>
+                  <input id="companyName" type="text" placeholder="e.g., PACKSMART" value={appData.companyDetails.companyName}
+                    onChange={(e) => setAppData((prev) => ({ ...prev, companyDetails: { ...prev.companyDetails, companyName: e.target.value } }))}
+                    className="w-full h-12 px-4 border border-[#E0E0E0] rounded-xl text-base font-semibold focus:border-[#4A90E2] focus:shadow-[0_0_0_3px_rgba(74,144,226,0.15)] focus:outline-none transition-colors" />
+                </div>
+                <div>
+                  <Label htmlFor="companyTagline" className="text-sm font-medium text-gray-700 mb-1 block">Company Tagline</Label>
+                  <input id="companyTagline" type="text" placeholder="e.g., Vision-Calibrated Packaging Intelligence" value={appData.companyDetails.companyTagline}
+                    onChange={(e) => setAppData((prev) => ({ ...prev, companyDetails: { ...prev.companyDetails, companyTagline: e.target.value } }))}
+                    className="w-full h-12 px-4 border border-[#E0E0E0] rounded-xl text-sm focus:border-[#4A90E2] focus:shadow-[0_0_0_3px_rgba(74,144,226,0.15)] focus:outline-none transition-colors" />
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg p-6 shadow-sm">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">Contact Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="contactName" className="text-sm font-medium text-gray-700 mb-1 block">Contact Name</Label>
+                  <input id="contactName" type="text" placeholder="Contact person or department" value={appData.companyDetails.name}
+                    onChange={(e) => setAppData((prev) => ({ ...prev, companyDetails: { ...prev.companyDetails, name: e.target.value } }))}
+                    className="w-full h-12 px-4 border border-[#E0E0E0] rounded-xl text-sm focus:border-[#4A90E2] focus:shadow-[0_0_0_3px_rgba(74,144,226,0.15)] focus:outline-none transition-colors" />
+                </div>
+                <div>
+                  <Label htmlFor="phone" className="text-sm font-medium text-gray-700 mb-1 block">Phone Number</Label>
+                  <input id="phone" type="tel" placeholder="+91 XXX XXX XXXX" value={appData.companyDetails.phone}
+                    onChange={(e) => setAppData((prev) => ({ ...prev, companyDetails: { ...prev.companyDetails, phone: e.target.value } }))}
+                    className="w-full h-12 px-4 border border-[#E0E0E0] rounded-xl text-sm focus:border-[#4A90E2] focus:shadow-[0_0_0_3px_rgba(74,144,226,0.15)] focus:outline-none transition-colors" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="address" className="text-sm font-medium text-gray-700 mb-1 block">Address</Label>
+                  <textarea id="address" placeholder="Full company address" value={appData.companyDetails.address}
+                    onChange={(e) => setAppData((prev) => ({ ...prev, companyDetails: { ...prev.companyDetails, address: e.target.value } }))}
+                    rows={2} className="w-full min-h-[80px] px-4 py-3 border border-[#E0E0E0] rounded-xl text-sm focus:border-[#4A90E2] focus:shadow-[0_0_0_3px_rgba(74,144,226,0.15)] focus:outline-none resize-none transition-colors" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="email" className="text-sm font-medium text-gray-700 mb-1 block">Email Address</Label>
+                  <input id="email" type="email" placeholder="contact@yourcompany.com" value={appData.companyDetails.email}
+                    onChange={(e) => setAppData((prev) => ({ ...prev, companyDetails: { ...prev.companyDetails, email: e.target.value } }))}
+                    className="w-full h-12 px-4 border border-[#E0E0E0] rounded-xl text-sm focus:border-[#4A90E2] focus:shadow-[0_0_0_3px_rgba(74,144,226,0.15)] focus:outline-none transition-colors" />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="text-center space-y-4">
+          <Button size="lg" className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white px-12 py-6 rounded-xl shadow-xl">
+            <Download className="w-5 h-5 mr-2" />Download Quotation PDF
+          </Button>
+          <p className="text-sm text-gray-500">Your quotation will be downloaded as a PDF file</p>
+        </div>
+
+        <div className="mt-8 flex flex-wrap justify-center gap-4">
+          <Button size="lg" variant="outline" onClick={() => setCurrentPage("bom")} className="border-2 border-gray-300 hover:border-gray-400 px-6">
+            <ArrowLeft className="w-4 h-4 mr-2" />Back to BOM
+          </Button>
+          <Button size="lg" className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-8"
+            onClick={() => { setAppData(resetData); setCurrentPage("landing"); }}>
+            Accept Quote & Start New
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main App ────────────────────────────────────────────────────────────────
+
+export default function App() {
+  const [currentPage, setCurrentPage] = useState<Page>("landing");
+  const [currentCameraView, setCurrentCameraView] = useState<CameraViewType>("top");
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+
+  const [appData, setAppData] = useState<AppData>({
+    topViewImage: null, sideViewImage: null, knownWidth: "",
+    detectedObject: "Plastic Bottle", confidence: 94,
+    dimensions: { length: 22.5, width: 7.8, height: 16.4, volume: 2876.4 },
+    materials: { cardboard: 72, plastic: 28 },
+    materialProperties: { category: "Consumer Goods", fragility: "Moderate" },
+    estimatedWeight: 0.38, realWeight: "",
+    packaging: { type: "Corrugated Cardboard Box", boxDimensions: "28 × 14 × 22 cm", cushioning: "Bubble Wrap + Edge Protectors" },
+    bom: [
+      { material: "Corrugated Sheet", quantity: "0.8", unit: "sq.m", usage: "Box Material" },
+      { material: "Thermocol Padding", quantity: "2", unit: "pieces", usage: "Cushioning" },
+      { material: "Bubble Wrap", quantity: "1.2", unit: "meters", usage: "Inner Protection" },
+      { material: "Packing Tape", quantity: "1", unit: "roll", usage: "Sealing" },
+    ],
+    pricing: { materialCost: 45.5, packagingCost: 28.0, cushioningCost: 12.5, totalCost: 86.0, quotationId: "PKS-2026-001" },
+    companyDetails: { companyName: "", companyTagline: "", name: "", address: "", phone: "", email: "" },
+  });
+
+  const openCamera = (viewType: CameraViewType) => {
+    setCurrentCameraView(viewType);
+    setCapturedImage(null);
+    setCurrentPage("camera");
+  };
+
+  // handleCapture is now handled inside CameraPage via getUserMedia
+  const handleCapture = () => {};
+
+  const handleUseImage = () => {
+    if (capturedImage) {
+      // Convert dataURL to a File object
+      fetch(capturedImage)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], `${currentCameraView}-view.jpg`, { type: "image/jpeg" });
+          setAppData((prev) => ({
+            ...prev,
+            [currentCameraView === "top" ? "topViewImage" : "sideViewImage"]: {
+              url: capturedImage,
+              file,
+            },
+          }));
+        });
+      setCurrentPage("capture");
+    }
+  };
+
+  const handleImageUpload = (file: File, type: "top" | "side") => {
+    const url = URL.createObjectURL(file);
+    setAppData((prev) => ({
+      ...prev,
+      [type === "top" ? "topViewImage" : "sideViewImage"]: { url, file },
+    }));
+  };
+
+  const pageProps: PageProps = {
+    appData, setAppData, currentPage, setCurrentPage,
+    currentCameraView, openCamera, capturedImage, setCapturedImage,
+    handleCapture, handleUseImage, handleImageUpload,
+  };
+
+  return (
+    <div>
+      {currentPage === "landing" && <LandingPage {...pageProps} />}
+      {currentPage === "capture" && <CapturePage {...pageProps} />}
+      {currentPage === "camera" && <CameraPage {...pageProps} />}
+      {currentPage === "detection" && <DetectionPage {...pageProps} />}
+      {currentPage === "materials" && <MaterialsPage {...pageProps} />}
+      {currentPage === "packaging" && <PackagingPage {...pageProps} />}
+      {currentPage === "bom" && <BOMPage {...pageProps} />}
+      {currentPage === "pricing" && <PricingPage {...pageProps} />}
     </div>
   );
 }
