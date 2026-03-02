@@ -34,14 +34,16 @@ def run_pipeline(front_image_path, top_image_path, real_width_cm):
     material_data = predict_material(front_data["crop_image_path"])
 
     # ---------------- WEIGHT ESTIMATION ----------------
-    weight = estimate_weight(real_dimensions["volume_cm3"], material_data, front_data["object_name"])
+    weight = estimate_weight(real_dimensions["volume_cm3"], material_data["material"], front_data["object_name"])
 
     # ---------------- STRUCTURED OUTPUT ----------------
     return {
-        "front_bbox_image_path": front_data["bbox_image_path"],
-        "top_bbox_image_path": top_data["bbox_image_path"],
-        "real_dimensions": real_dimensions,
-        "material": material_data,
-        "crop_image_path": front_data["crop_image_path"],
-        "weight": weight
-    }
+    "front_bbox_image_path": front_data["bbox_image_path"],
+    "top_bbox_image_path": top_data["bbox_image_path"],
+    "real_dimensions": real_dimensions,
+    "material": material_data,
+    "crop_image_path": front_data["crop_image_path"],
+    "weight": weight,
+    "object_name": front_data["object_name"],
+    "confidence": front_data["confidence"]
+}

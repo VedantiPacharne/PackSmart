@@ -248,7 +248,7 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
                 </span>
               </h1>
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                An image is all it takes to design the perfect package, instantly estimating real-world dimensions, identifying materials, and generating packaging solutions.
+                Capture product images, estimate real-world dimensions, identify materials, and generate optimized packaging solutions — instantly.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Button size="lg" onClick={() => setCurrentPage("capture")} className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl hover:shadow-2xl transition-all">
@@ -365,6 +365,66 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
 }
 
 function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCamera }: PageProps) {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  const runDetection = async () => {
+    if (!appData.topViewImage?.file || !appData.sideViewImage?.file || !appData.knownWidth) {
+      alert("Please upload both images and enter the known width");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("top_image", appData.topViewImage.file);
+      formData.append("front_image", appData.sideViewImage.file);
+      formData.append("real_width_cm", appData.knownWidth);
+
+      const response = await fetch("http://localhost:8000/api/analyze", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || "Backend error");
+      }
+
+      const result = await response.json();
+      const data = result.data;
+
+      // Map backend response to appData
+      setAppData(prev => ({
+        ...prev,
+        detectedObject: data.object_name || "Detected Object",
+        confidence: data.confidence || prev.confidence,
+        dimensions: {
+          length: data.real_dimensions.length_cm,
+          width: data.real_dimensions.width_cm,
+          height: data.real_dimensions.height_cm,
+          volume: data.real_dimensions.volume_cm3,
+        },
+        materials: {
+          [data.material.material]: 100,
+        },
+        materialProperties: {
+          category: data.object_name || "Unknown",
+          fragility: "Moderate",
+        },
+        estimatedWeight: data.weight,
+      }));
+
+      setCurrentPage("detection");
+    } catch (err: any) {
+      setAnalysisError(err.message || "Could not connect to backend. Make sure it is running.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
       <Navbar showBack currentPage={currentPage} setCurrentPage={setCurrentPage} />
@@ -466,20 +526,29 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
         </Card>
 
         <div className="text-center pb-12">
+          {analysisError && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-6 py-4 text-sm">
+              ⚠️ {analysisError}
+            </div>
+          )}
           <Button
             size="lg"
-            onClick={() => {
-              if (!appData.topViewImage || !appData.sideViewImage || !appData.knownWidth) {
-                alert("Please upload both images and enter the known width");
-                return;
-              }
-              setCurrentPage("detection");
-            }}
-            disabled={!appData.topViewImage || !appData.sideViewImage || !appData.knownWidth}
+            onClick={runDetection}
+            disabled={!appData.topViewImage || !appData.sideViewImage || !appData.knownWidth || isAnalyzing}
             className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl disabled:opacity-50"
           >
-            Run Detection <ChevronRight className="w-5 h-5 ml-2" />
+            {isAnalyzing ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                Analyzing...
+              </>
+            ) : (
+              <>Run Detection <ChevronRight className="w-5 h-5 ml-2" /></>
+            )}
           </Button>
+          {isAnalyzing && (
+            <p className="text-sm text-gray-500 mt-3">Running AI pipeline — this may take a few seconds...</p>
+          )}
         </div>
       </div>
     </div>
@@ -1041,6 +1110,20 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
   const shipping = 15.0;
   const total = subtotal + tax + shipping;
 
+  const handleDownloadPDF = async () => {
+    const { default: jsPDF } = await import("jspdf");
+    const { default: html2canvas } = await import("html2canvas");
+    const element = document.getElementById("quotation-card");
+    if (!element) return;
+    const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`PackSmart_Quotation_${appData.pricing.quotationId}.pdf`);
+  };
+
   const resetData: AppData = {
     topViewImage: null, sideViewImage: null, knownWidth: "",
     detectedObject: "Plastic Bottle", confidence: 94,
@@ -1070,7 +1153,7 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
           <p className="text-lg text-gray-600">Professional packaging quotation ready for download</p>
         </motion.div>
 
-        <Card className="border-0 shadow-2xl bg-white mb-8">
+        <Card id="quotation-card" className="border-0 shadow-2xl bg-white mb-8">
           <div className="p-8 border-b-2 border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
@@ -1205,7 +1288,7 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
         </Card>
 
         <div className="text-center space-y-4">
-          <Button size="lg" className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white px-12 py-6 rounded-xl shadow-xl">
+          <Button size="lg" onClick={handleDownloadPDF} className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white px-12 py-6 rounded-xl shadow-xl">
             <Download className="w-5 h-5 mr-2" />Download Quotation PDF
           </Button>
           <p className="text-sm text-gray-500">Your quotation will be downloaded as a PDF file</p>

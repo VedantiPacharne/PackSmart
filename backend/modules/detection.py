@@ -83,7 +83,8 @@ def detect_front_object(image_path, save_dir="outputs", model_path="../models/be
         "bbox_image_path": bbox_path,
         "crop_image_path": crop_path,
         "crop_image": cropped,
-        "object_name": object_name
+        "object_name": object_name,
+        "confidence": round(float(boxes[0].conf[0]) * 100, 1)
     }
 
 # ------------------------Top Object Detection Function------------------------
