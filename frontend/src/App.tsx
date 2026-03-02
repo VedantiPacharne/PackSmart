@@ -50,6 +50,7 @@ import {
   TableRow,
 } from "./components/ui/table";
 import { ImageWithFallback } from "./components/figma/ImageWithFallback";
+import BoxDieline from "./components/BoxDieline";
 
 type Page =
   | "landing"
@@ -991,21 +992,14 @@ function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
           <Card className="border-0 shadow-lg bg-white">
             <CardContent className="p-8">
               <div className="flex items-center space-x-2 mb-6"><FileText className="w-5 h-5 text-blue-600" /><h3 className="font-semibold text-gray-900">2D Flat Layout</h3></div>
-              <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-12 flex flex-col items-center justify-center min-h-[400px]">
-                <svg width="240" height="280" viewBox="0 0 240 280" className="mx-auto">
-                  <rect x="70" y="90" width="100" height="100" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 4" />
-                  <rect x="70" y="30" width="100" height="55" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 4" />
-                  <text x="120" y="60" textAnchor="middle" fill="#9CA3AF" fontSize="11">Top</text>
-                  <rect x="70" y="195" width="100" height="55" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 4" />
-                  <text x="120" y="225" textAnchor="middle" fill="#9CA3AF" fontSize="11">Bottom</text>
-                  <rect x="5" y="90" width="60" height="100" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 4" />
-                  <text x="35" y="145" textAnchor="middle" fill="#9CA3AF" fontSize="11">Side</text>
-                  <rect x="175" y="90" width="60" height="100" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 4" />
-                  <text x="205" y="145" textAnchor="middle" fill="#9CA3AF" fontSize="11">Side</text>
-                  <text x="120" y="135" textAnchor="middle" fill="#6B7280" fontSize="12" fontWeight="500">18cm × 10cm × 5cm</text>
-                </svg>
-                <p className="text-sm text-gray-600 mt-6">Unfolded box template with cut lines</p>
-              </div>
+          <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-6 flex flex-col items-center justify-center min-h-[400px]">
+              <BoxDieline
+                length={appData.dimensions.length}
+                width={appData.dimensions.width}
+                height={appData.dimensions.height}
+              />
+              <p className="text-sm text-gray-600 mt-4">Scaled 2D box dieline — fold on dashed lines, cut on solid lines</p>
+            </div>
             </CardContent>
           </Card>
           <Card className="border-0 shadow-lg bg-white">
@@ -1112,15 +1106,104 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
 
   const handleDownloadPDF = async () => {
     const { default: jsPDF } = await import("jspdf");
-    const { default: html2canvas } = await import("html2canvas");
-    const element = document.getElementById("quotation-card");
-    if (!element) return;
-    const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-    const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "mm", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const margin = 15;
+    let y = 20;
+
+    // ── Header ──
+    pdf.setFillColor(22, 163, 74); // green
+    pdf.rect(0, 0, pageWidth, 30, "F");
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(22);
+    pdf.setFont("helvetica", "bold");
+    pdf.text(appData.companyDetails.companyName || "PACKSMART", margin, 18);
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(appData.companyDetails.companyTagline || "Vision-Calibrated Packaging Intelligence", margin, 25);
+
+    y = 45;
+
+    // ── Quotation Info ──
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(18);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("PRICE QUOTATION", pageWidth - margin, y, { align: "right" });
+    y += 8;
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`Quotation #: ${appData.pricing.quotationId}`, pageWidth - margin, y, { align: "right" });
+    y += 6;
+    pdf.text(`Date: ${new Date().toLocaleDateString()}`, pageWidth - margin, y, { align: "right" });
+    y += 6;
+    pdf.text(`Valid Until: ${new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toLocaleDateString()}`, pageWidth - margin, y, { align: "right" });
+
+    // ── Contact Info ──
+    y = 45;
+    if (appData.companyDetails.name) { pdf.text(appData.companyDetails.name, margin, y); y += 6; }
+    if (appData.companyDetails.address) { pdf.text(appData.companyDetails.address, margin, y); y += 6; }
+    if (appData.companyDetails.phone) { pdf.text(`Phone: ${appData.companyDetails.phone}`, margin, y); y += 6; }
+    if (appData.companyDetails.email) { pdf.text(`Email: ${appData.companyDetails.email}`, margin, y); y += 6; }
+
+    y = 95;
+
+    // ── Divider ──
+    pdf.setDrawColor(200, 200, 200);
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 10;
+
+    // ── Object Info ──
+    pdf.setFontSize(12);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Quotation For:", margin, y);
+    y += 7;
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.text(`Object: ${appData.detectedObject}`, margin, y); y += 6;
+    pdf.text(`Dimensions: ${appData.dimensions.length} × ${appData.dimensions.width} × ${appData.dimensions.height} cm`, margin, y); y += 6;
+    pdf.text(`Material: ${appData.packaging.type}`, margin, y); y += 6;
+    pdf.text(`Quantity: ${quantity} units`, margin, y); y += 10;
+
+    // ── Table Header ──
+    pdf.setFillColor(254, 243, 199); // amber
+    pdf.rect(margin, y, pageWidth - margin * 2, 8, "F");
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(10);
+    pdf.text("DESCRIPTION", margin + 2, y + 5.5);
+    pdf.text("QTY", 120, y + 5.5);
+    pdf.text("UNIT PRICE", 140, y + 5.5);
+    pdf.text("AMOUNT", 170, y + 5.5);
+    y += 8;
+
+    // ── Table Row ──
+    pdf.setFont("helvetica", "normal");
+    pdf.rect(margin, y, pageWidth - margin * 2, 8);
+    pdf.text(`${appData.packaging.type} Box`, margin + 2, y + 5.5);
+    pdf.text(`${quantity}`, 120, y + 5.5);
+    pdf.text(`₹ ${(materialsCost / quantity).toFixed(2)}`, 140, y + 5.5);
+    pdf.text(`₹ ${materialsCost.toFixed(2)}`, 170, y + 5.5);
+    y += 20;
+
+    // ── Totals ──
+    const col = 140;
+    pdf.setDrawColor(200, 200, 200);
+    pdf.line(col, y, pageWidth - margin, y); y += 6;
+    pdf.text("Subtotal:", col, y); pdf.text(`₹ ${subtotal.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text(`Tax (${(taxRate * 100).toFixed(1)}%):`, col, y); pdf.text(`₹ ${tax.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text("Shipping:", col, y); pdf.text(`₹ ${shipping.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.line(col, y, pageWidth - margin, y); y += 6;
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(12);
+    pdf.setTextColor(22, 163, 74);
+    pdf.text("TOTAL:", col, y); pdf.text(`₹ ${total.toFixed(2)}`, 185, y, { align: "right" });
+
+    // ── Footer ──
+    y += 20;
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("THANK YOU FOR YOUR BUSINESS!", pageWidth / 2, y, { align: "center" });
+
     pdf.save(`PackSmart_Quotation_${appData.pricing.quotationId}.pdf`);
   };
 
