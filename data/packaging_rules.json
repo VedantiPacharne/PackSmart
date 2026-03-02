@@ -1,0 +1,21 @@
+{
+  "weight_categories_kg": {
+    "light": 2,
+    "medium": 10,
+    "heavy": 50
+  },
+
+  "outer_packaging_by_weight": {
+    "light":  "Single Wall Corrugated Box",
+    "medium": "Double Wall Corrugated Box",
+    "heavy": "Plywood Crate"
+  },
+
+  "inner_packaging_rules": {
+    "Electronics":"Edge-Protector",
+    "Furniture":"Bubble-Wrap",
+    "Heavy_machinery":"FoamSheet-Wrap",
+    "Fragile": "Bubble-Wrap",
+    "Consumer-Goods":"None"
+  }
+}

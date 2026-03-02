@@ -15,7 +15,7 @@ def load_model(model_path="../models/best.pt"):
 
 
 # ------------------------Front Object Detection Function------------------------
-def detect_front_object(image_path, save_dir="outputs", model_path="../models/best.pt"):
+def detect_front_object(image_path, save_dir="outputs"):
     """
     Detect object from front image and return reusable outputs.
 
@@ -23,21 +23,19 @@ def detect_front_object(image_path, save_dir="outputs", model_path="../models/be
         dict containing:
             width_px
             height_px
-            bbox (x1,y1,x2,y2)
             bbox_image_path
             crop_image_path
-            crop_image (numpy array)
+            object name
+            confidence
     """
-
-    model = load_model(model_path)
-
+    
     # read image
     img = cv2.imread(image_path)
     if img is None:
         raise ValueError("Front image not found")
 
     # run detection
-    results = model(img)
+    results = _model(img, conf=0.37)
     boxes = results[0].boxes
 
     if boxes is None or len(boxes) == 0:
@@ -46,9 +44,10 @@ def detect_front_object(image_path, save_dir="outputs", model_path="../models/be
     # take first detected object
     x1, y1, x2, y2 = map(int, boxes[0].xyxy[0])
 
-    #object name
+    #object name and confidence score
     cls_id = int(boxes.cls[0])
-    object_name = model.names[cls_id]
+    object_name = _model.names[cls_id]
+    conf = boxes.conf[0].item() 
 
     # pixel dimensions
     width_px = x2 - x1
@@ -77,13 +76,12 @@ def detect_front_object(image_path, save_dir="outputs", model_path="../models/be
 
     # return reusable data
     return {
-        "bbox": (x1, y1, x2, y2),
         "width_px": width_px,
         "height_px": height_px,
         "bbox_image_path": bbox_path,
         "crop_image_path": crop_path,
-        "crop_image": cropped,
-        "object_name": object_name
+        "object_name": object_name,
+        "confidence": conf
     }
 
 # ------------------------Top Object Detection Function------------------------
@@ -95,8 +93,6 @@ def detect_top_object(image_path, save_dir="outputs"):
         dict containing:
             width_top_px
             height_top_px
-            bbox (x,y,w,h)
-            bbox_image_path
     """
 
     img = cv2.imread(image_path)
@@ -136,8 +132,6 @@ def detect_top_object(image_path, save_dir="outputs"):
     cv2.imwrite(bbox_path, annotated)
 
     return {
-        "bbox": (x, y, w, h),
         "width_top_px": width_top_px,
-        "height_top_px": height_top_px,
-        "bbox_image_path": bbox_path
+        "height_top_px": height_top_px
     }
