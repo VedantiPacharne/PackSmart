@@ -50,6 +50,7 @@ import {
   TableRow,
 } from "./components/ui/table";
 import { ImageWithFallback } from "./components/figma/ImageWithFallback";
+import BoxDieline from "./components/BoxDieline";
 
 type Page =
   | "landing"
@@ -248,7 +249,7 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
                 </span>
               </h1>
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                An image is all it takes to design the perfect package, instantly estimating real-world dimensions, identifying materials, and generating packaging solutions.
+                Capture product images, estimate real-world dimensions, identify materials, and generate optimized packaging solutions — instantly.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Button size="lg" onClick={() => setCurrentPage("capture")} className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl hover:shadow-2xl transition-all">
@@ -365,6 +366,66 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
 }
 
 function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCamera }: PageProps) {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  const runDetection = async () => {
+    if (!appData.topViewImage?.file || !appData.sideViewImage?.file || !appData.knownWidth) {
+      alert("Please upload both images and enter the known width");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("top_image", appData.topViewImage.file);
+      formData.append("front_image", appData.sideViewImage.file);
+      formData.append("real_width_cm", appData.knownWidth);
+
+      const response = await fetch("http://localhost:8000/api/analyze", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || "Backend error");
+      }
+
+      const result = await response.json();
+      const data = result.data;
+
+      // Map backend response to appData
+      setAppData(prev => ({
+        ...prev,
+        detectedObject: data.object_name || "Detected Object",
+        confidence: data.confidence || prev.confidence,
+        dimensions: {
+          length: data.real_dimensions.length_cm,
+          width: data.real_dimensions.width_cm,
+          height: data.real_dimensions.height_cm,
+          volume: data.real_dimensions.volume_cm3,
+        },
+        materials: {
+          [data.material.material]: 100,
+        },
+        materialProperties: {
+          category: data.object_name || "Unknown",
+          fragility: "Moderate",
+        },
+        estimatedWeight: data.weight,
+      }));
+
+      setCurrentPage("detection");
+    } catch (err: any) {
+      setAnalysisError(err.message || "Could not connect to backend. Make sure it is running.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
       <Navbar showBack currentPage={currentPage} setCurrentPage={setCurrentPage} />
@@ -466,20 +527,29 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
         </Card>
 
         <div className="text-center pb-12">
+          {analysisError && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-6 py-4 text-sm">
+              ⚠️ {analysisError}
+            </div>
+          )}
           <Button
             size="lg"
-            onClick={() => {
-              if (!appData.topViewImage || !appData.sideViewImage || !appData.knownWidth) {
-                alert("Please upload both images and enter the known width");
-                return;
-              }
-              setCurrentPage("detection");
-            }}
-            disabled={!appData.topViewImage || !appData.sideViewImage || !appData.knownWidth}
+            onClick={runDetection}
+            disabled={!appData.topViewImage || !appData.sideViewImage || !appData.knownWidth || isAnalyzing}
             className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl disabled:opacity-50"
           >
-            Run Detection <ChevronRight className="w-5 h-5 ml-2" />
+            {isAnalyzing ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                Analyzing...
+              </>
+            ) : (
+              <>Run Detection <ChevronRight className="w-5 h-5 ml-2" /></>
+            )}
           </Button>
+          {isAnalyzing && (
+            <p className="text-sm text-gray-500 mt-3">Running AI pipeline — this may take a few seconds...</p>
+          )}
         </div>
       </div>
     </div>
@@ -922,21 +992,14 @@ function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
           <Card className="border-0 shadow-lg bg-white">
             <CardContent className="p-8">
               <div className="flex items-center space-x-2 mb-6"><FileText className="w-5 h-5 text-blue-600" /><h3 className="font-semibold text-gray-900">2D Flat Layout</h3></div>
-              <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-12 flex flex-col items-center justify-center min-h-[400px]">
-                <svg width="240" height="280" viewBox="0 0 240 280" className="mx-auto">
-                  <rect x="70" y="90" width="100" height="100" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 4" />
-                  <rect x="70" y="30" width="100" height="55" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 4" />
-                  <text x="120" y="60" textAnchor="middle" fill="#9CA3AF" fontSize="11">Top</text>
-                  <rect x="70" y="195" width="100" height="55" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 4" />
-                  <text x="120" y="225" textAnchor="middle" fill="#9CA3AF" fontSize="11">Bottom</text>
-                  <rect x="5" y="90" width="60" height="100" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 4" />
-                  <text x="35" y="145" textAnchor="middle" fill="#9CA3AF" fontSize="11">Side</text>
-                  <rect x="175" y="90" width="60" height="100" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="4 4" />
-                  <text x="205" y="145" textAnchor="middle" fill="#9CA3AF" fontSize="11">Side</text>
-                  <text x="120" y="135" textAnchor="middle" fill="#6B7280" fontSize="12" fontWeight="500">18cm × 10cm × 5cm</text>
-                </svg>
-                <p className="text-sm text-gray-600 mt-6">Unfolded box template with cut lines</p>
-              </div>
+          <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-6 flex flex-col items-center justify-center min-h-[400px]">
+              <BoxDieline
+                length={appData.dimensions.length}
+                width={appData.dimensions.width}
+                height={appData.dimensions.height}
+              />
+              <p className="text-sm text-gray-600 mt-4">Scaled 2D box dieline — fold on dashed lines, cut on solid lines</p>
+            </div>
             </CardContent>
           </Card>
           <Card className="border-0 shadow-lg bg-white">
@@ -1041,6 +1104,109 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
   const shipping = 15.0;
   const total = subtotal + tax + shipping;
 
+  const handleDownloadPDF = async () => {
+    const { default: jsPDF } = await import("jspdf");
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const margin = 15;
+    let y = 20;
+
+    // ── Header ──
+    pdf.setFillColor(22, 163, 74); // green
+    pdf.rect(0, 0, pageWidth, 30, "F");
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(22);
+    pdf.setFont("helvetica", "bold");
+    pdf.text(appData.companyDetails.companyName || "PACKSMART", margin, 18);
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(appData.companyDetails.companyTagline || "Vision-Calibrated Packaging Intelligence", margin, 25);
+
+    y = 45;
+
+    // ── Quotation Info ──
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(18);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("PRICE QUOTATION", pageWidth - margin, y, { align: "right" });
+    y += 8;
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`Quotation #: ${appData.pricing.quotationId}`, pageWidth - margin, y, { align: "right" });
+    y += 6;
+    pdf.text(`Date: ${new Date().toLocaleDateString()}`, pageWidth - margin, y, { align: "right" });
+    y += 6;
+    pdf.text(`Valid Until: ${new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toLocaleDateString()}`, pageWidth - margin, y, { align: "right" });
+
+    // ── Contact Info ──
+    y = 45;
+    if (appData.companyDetails.name) { pdf.text(appData.companyDetails.name, margin, y); y += 6; }
+    if (appData.companyDetails.address) { pdf.text(appData.companyDetails.address, margin, y); y += 6; }
+    if (appData.companyDetails.phone) { pdf.text(`Phone: ${appData.companyDetails.phone}`, margin, y); y += 6; }
+    if (appData.companyDetails.email) { pdf.text(`Email: ${appData.companyDetails.email}`, margin, y); y += 6; }
+
+    y = 95;
+
+    // ── Divider ──
+    pdf.setDrawColor(200, 200, 200);
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 10;
+
+    // ── Object Info ──
+    pdf.setFontSize(12);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Quotation For:", margin, y);
+    y += 7;
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.text(`Object: ${appData.detectedObject}`, margin, y); y += 6;
+    pdf.text(`Dimensions: ${appData.dimensions.length} × ${appData.dimensions.width} × ${appData.dimensions.height} cm`, margin, y); y += 6;
+    pdf.text(`Material: ${appData.packaging.type}`, margin, y); y += 6;
+    pdf.text(`Quantity: ${quantity} units`, margin, y); y += 10;
+
+    // ── Table Header ──
+    pdf.setFillColor(254, 243, 199); // amber
+    pdf.rect(margin, y, pageWidth - margin * 2, 8, "F");
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(10);
+    pdf.text("DESCRIPTION", margin + 2, y + 5.5);
+    pdf.text("QTY", 120, y + 5.5);
+    pdf.text("UNIT PRICE", 140, y + 5.5);
+    pdf.text("AMOUNT", 170, y + 5.5);
+    y += 8;
+
+    // ── Table Row ──
+    pdf.setFont("helvetica", "normal");
+    pdf.rect(margin, y, pageWidth - margin * 2, 8);
+    pdf.text(`${appData.packaging.type} Box`, margin + 2, y + 5.5);
+    pdf.text(`${quantity}`, 120, y + 5.5);
+    pdf.text(`₹ ${(materialsCost / quantity).toFixed(2)}`, 140, y + 5.5);
+    pdf.text(`₹ ${materialsCost.toFixed(2)}`, 170, y + 5.5);
+    y += 20;
+
+    // ── Totals ──
+    const col = 140;
+    pdf.setDrawColor(200, 200, 200);
+    pdf.line(col, y, pageWidth - margin, y); y += 6;
+    pdf.text("Subtotal:", col, y); pdf.text(`₹ ${subtotal.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text(`Tax (${(taxRate * 100).toFixed(1)}%):`, col, y); pdf.text(`₹ ${tax.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text("Shipping:", col, y); pdf.text(`₹ ${shipping.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.line(col, y, pageWidth - margin, y); y += 6;
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(12);
+    pdf.setTextColor(22, 163, 74);
+    pdf.text("TOTAL:", col, y); pdf.text(`₹ ${total.toFixed(2)}`, 185, y, { align: "right" });
+
+    // ── Footer ──
+    y += 20;
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("THANK YOU FOR YOUR BUSINESS!", pageWidth / 2, y, { align: "center" });
+
+    pdf.save(`PackSmart_Quotation_${appData.pricing.quotationId}.pdf`);
+  };
+
   const resetData: AppData = {
     topViewImage: null, sideViewImage: null, knownWidth: "",
     detectedObject: "Plastic Bottle", confidence: 94,
@@ -1070,7 +1236,7 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
           <p className="text-lg text-gray-600">Professional packaging quotation ready for download</p>
         </motion.div>
 
-        <Card className="border-0 shadow-2xl bg-white mb-8">
+        <Card id="quotation-card" className="border-0 shadow-2xl bg-white mb-8">
           <div className="p-8 border-b-2 border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
@@ -1205,7 +1371,7 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
         </Card>
 
         <div className="text-center space-y-4">
-          <Button size="lg" className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white px-12 py-6 rounded-xl shadow-xl">
+          <Button size="lg" onClick={handleDownloadPDF} className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white px-12 py-6 rounded-xl shadow-xl">
             <Download className="w-5 h-5 mr-2" />Download Quotation PDF
           </Button>
           <p className="text-sm text-gray-500">Your quotation will be downloaded as a PDF file</p>
