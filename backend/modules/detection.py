@@ -7,9 +7,13 @@ from ultralytics import YOLO
 _model = None
 
 # ------------------------Model Loading------------------------
-def load_model(model_path="../models/best.pt"):
+def load_model(model_path=None):
     global _model
     if _model is None:
+        if model_path is None:
+            # Go up 3 levels from backend/modules to root
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            model_path = os.path.join(base_dir, "models", "best.pt")
         _model = YOLO(model_path)
     return _model
 
@@ -81,7 +85,7 @@ def detect_front_object(image_path, save_dir="outputs"):
         "bbox_image_path": bbox_path,
         "crop_image_path": crop_path,
         "object_name": object_name,
-        "confidence": conf
+        "confidence": round(conf * 100, 2)
     }
 
 # ------------------------Top Object Detection Function------------------------

@@ -1,8 +1,13 @@
 import json
+import os
 
 # Load Packaging Rules
 
-def load_rules(json_path="data/packaging_rules.json"):
+def load_rules(json_path=None):
+    if json_path is None:
+        # Go up 3 levels from backend/modules to root
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        json_path = os.path.join(base_dir, "data", "packaging_rules.json")
     with open(json_path, "r") as f:
         return json.load(f)
 
@@ -62,11 +67,11 @@ def get_packaging_recommendation(
     packaging_material = rules["outer_packaging_by_weight"][weight_category]
 
     # Inner Packaging (Based on Category + Fragility)
-    if fragility.equals("Fragile"):
+    if fragility == "Fragile":
         packaging_category = "Fragile"
     protection_layer = rules["inner_packaging_rules"].get(
         packaging_category,
-        rules["inner_packaging_rules"]["Consumer Goods"]
+        rules["inner_packaging_rules"]["Consumer-Goods"]
     )
 
     # Adjust Dimensions Based on Padding

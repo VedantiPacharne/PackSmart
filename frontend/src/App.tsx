@@ -81,10 +81,10 @@ type AppData = {
     height: number;
     volume: number;
   };
-  materials: {
-    cardboard: number;
-    plastic: number;
-  };
+  materials: Array<{
+    name: string;
+    confidence: number;
+  }>;
   materialProperties: {
     category: string;
     fragility: string;
@@ -401,19 +401,17 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
       setAppData(prev => ({
         ...prev,
         detectedObject: data.object_name || "Detected Object",
-        confidence: data.confidence || prev.confidence,
+        confidence: data.object_confidence || prev.confidence,
         dimensions: {
           length: data.real_dimensions.length_cm,
           width: data.real_dimensions.width_cm,
           height: data.real_dimensions.height_cm,
           volume: data.real_dimensions.volume_cm3,
         },
-        materials: {
-          [data.material.material]: 100,
-        },
+        materials: data.material.materials || prev.materials,
         materialProperties: {
-          category: data.object_name || "Unknown",
-          fragility: "Moderate",
+          category: data.material.object_category || "Unknown",
+          fragility: data.material.fragility || "Non-Fragile",
         },
         estimatedWeight: data.weight,
       }));
@@ -872,18 +870,18 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
         <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm mb-8">
           <CardHeader><CardTitle className="flex items-center space-x-2"><Layers className="w-5 h-5 text-violet-600" /><span>Material Composition Analysis</span></CardTitle></CardHeader>
           <CardContent className="space-y-6">
-            {Object.entries(appData.materials).map(([material, percentage], index) => (
-              <motion.div key={material} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }}>
+            {appData.materials.map((material, index) => (
+              <motion.div key={material.name} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${material === "cardboard" ? "bg-gradient-to-br from-amber-500 to-orange-500" : material === "plastic" ? "bg-gradient-to-br from-blue-500 to-cyan-500" : "bg-gradient-to-br from-gray-500 to-gray-600"}`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${index === 0 ? "bg-gradient-to-br from-blue-500 to-cyan-500" : "bg-gradient-to-br from-purple-500 to-pink-500"}`}>
                       <Box className="w-5 h-5 text-white" />
                     </div>
-                    <span className="text-lg font-semibold text-gray-900 capitalize">{material}</span>
+                    <span className="text-lg font-semibold text-gray-900">{material.name}</span>
                   </div>
-                  <span className="text-2xl font-bold text-gray-900">{percentage}%</span>
+                  <span className="text-2xl font-bold text-gray-900">{material.confidence.toFixed(1)}%</span>
                 </div>
-                <Progress value={percentage} className="h-4" />
+                <Progress value={material.confidence} className="h-4" />
               </motion.div>
             ))}
           </CardContent>
@@ -1211,7 +1209,10 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     topViewImage: null, sideViewImage: null, knownWidth: "",
     detectedObject: "Plastic Bottle", confidence: 94,
     dimensions: { length: 22.5, width: 7.8, height: 16.4, volume: 2876.4 },
-    materials: { cardboard: 72, plastic: 28 },
+    materials: [
+      { name: "Cardboard", confidence: 72 },
+      { name: "Plastic", confidence: 28 }
+    ],
     materialProperties: { category: "Consumer Goods", fragility: "Moderate" },
     estimatedWeight: 0.38, realWeight: "",
     packaging: { type: "Corrugated Cardboard Box", boxDimensions: "28 × 14 × 22 cm", cushioning: "Bubble Wrap + Edge Protectors" },
@@ -1402,7 +1403,10 @@ export default function App() {
     topViewImage: null, sideViewImage: null, knownWidth: "",
     detectedObject: "Plastic Bottle", confidence: 94,
     dimensions: { length: 22.5, width: 7.8, height: 16.4, volume: 2876.4 },
-    materials: { cardboard: 72, plastic: 28 },
+    materials: [
+      { name: "Plastic", confidence: 72 },
+      { name: "Cardboard", confidence: 28 }
+    ],
     materialProperties: { category: "Consumer Goods", fragility: "Moderate" },
     estimatedWeight: 0.38, realWeight: "",
     packaging: { type: "Corrugated Cardboard Box", boxDimensions: "28 × 14 × 22 cm", cushioning: "Bubble Wrap + Edge Protectors" },

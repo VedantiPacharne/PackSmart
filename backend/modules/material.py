@@ -3,10 +3,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 import cv2
 import json
+import os
 import numpy as np
 from torchvision import models, transforms
 
-MODEL_PATH = "../models/efficientnetb4_best_model.pth"
+def get_model_path():
+    # Go up 3 levels from backend/modules to root
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return os.path.join(base_dir, "models", "efficientnetb4_best_model.pth")
+
+MODEL_PATH = get_model_path()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -31,14 +37,19 @@ def get_fragility(materials_list):
 # Get Object Category
 
 import json
+import os
 
-def get_object_category(object_name, json_path="object_categories.json"):
+def get_object_category(object_name, json_path=None):
     """
     Input: object_name (string)
     Output: category (string)
     """
 
     try:
+        if json_path is None:
+            # Go up 3 levels from backend/modules to root
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            json_path = os.path.join(base_dir, "data", "object_categories.json")
         with open(json_path, "r") as f:
             data = json.load(f)
 
@@ -61,7 +72,7 @@ def load_material_model():
     if _model_material is None:
 
         # Load class names
-        _class_names = ['Aluminium', 'Brass', 'Copper', 'Iron', 'Steel', 'ceramic', 'glass', 'paper', 'plastic', 'wood']
+        _class_names = ['Aluminium', 'Brass', 'Copper', 'Iron', 'Steel', 'Ceramic', 'Glass', 'Paper', 'Plastic', 'Wood']
 
         num_classes = len(_class_names)
 

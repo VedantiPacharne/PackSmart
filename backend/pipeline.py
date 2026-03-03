@@ -3,6 +3,7 @@ from modules.dimensions import get_real_dimensions
 from modules.material import predict_material
 from modules.weight import estimate_weight
 from modules.packaging import get_packaging_recommendation
+from modules.bom import generate_bom
 
 def run_pipeline(front_image_path, top_image_path, real_width_cm):
     """
@@ -35,12 +36,14 @@ def run_pipeline(front_image_path, top_image_path, real_width_cm):
     material_data = predict_material(front_data["crop_image_path"], front_data["object_name"] )
 
     # ---------------- WEIGHT ESTIMATION ----------------
-    weight = estimate_weight(real_dimensions["volume_cm3"], material_data["materials"], front_data["object_name"])
+    weight = estimate_weight(real_dimensions["volume_cm3"], material_data["materials"][0]["name"], front_data["object_name"])
 
     # ---------------- WEIGHT ESTIMATION ----------------
-    packaging = get_packaging_recommendation(material_data["object_category"], material_data["fragility"],weight, real_dimensions["length_cm3"], real_dimensions["width_cm3"], real_dimensions["height_cm3"])
+    packaging = get_packaging_recommendation(material_data["object_category"], material_data["fragility"],weight, real_dimensions["length_cm"], real_dimensions["width_cm"], real_dimensions["height_cm"])
     
-    
+    bom_result = generate_bom(packaging["packaging_material"], packaging["adjusted_dimensions"], packaging["protection_layer"])
+    bom = bom_result["bom"]
+    grand_total = bom_result["grand_total"]
     # ---------------- STRUCTURED OUTPUT ----------------
     return {
         "front_bbox_image_path": front_data["bbox_image_path"],
@@ -49,5 +52,7 @@ def run_pipeline(front_image_path, top_image_path, real_width_cm):
         "real_dimensions": real_dimensions,
         "material": material_data,
         "weight": weight,
-        "packaging": packaging
+        "packaging": packaging,
+        "bom": bom,
+        "grand_total": grand_total
     }

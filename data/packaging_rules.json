@@ -6,8 +6,8 @@
   },
 
   "outer_packaging_by_weight": {
-    "light":  "Single Wall Corrugated Box",
-    "medium": "Double Wall Corrugated Box",
+    "light":  "Single Panel Cardboard Box",
+    "medium": "4 panel Cardboard Box",
     "heavy": "Plywood Crate"
   },
 
