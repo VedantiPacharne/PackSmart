@@ -1109,8 +1109,8 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     const margin = 15;
     let y = 20;
 
-    // ── Header ──
-    pdf.setFillColor(22, 163, 74); // green
+    // Header
+    pdf.setFillColor(22, 163, 74);
     pdf.rect(0, 0, pageWidth, 30, "F");
     pdf.setTextColor(255, 255, 255);
     pdf.setFontSize(22);
@@ -1122,7 +1122,7 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
 
     y = 45;
 
-    // ── Quotation Info ──
+    // Quotation Info
     pdf.setTextColor(0, 0, 0);
     pdf.setFontSize(18);
     pdf.setFont("helvetica", "bold");
@@ -1136,7 +1136,7 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     y += 6;
     pdf.text(`Valid Until: ${new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toLocaleDateString()}`, pageWidth - margin, y, { align: "right" });
 
-    // ── Contact Info ──
+    // Contact Info
     y = 45;
     if (appData.companyDetails.name) { pdf.text(appData.companyDetails.name, margin, y); y += 6; }
     if (appData.companyDetails.address) { pdf.text(appData.companyDetails.address, margin, y); y += 6; }
@@ -1145,12 +1145,12 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
 
     y = 95;
 
-    // ── Divider ──
+    // Divider
     pdf.setDrawColor(200, 200, 200);
     pdf.line(margin, y, pageWidth - margin, y);
     y += 10;
 
-    // ── Object Info ──
+    // Object Info
     pdf.setFontSize(12);
     pdf.setFont("helvetica", "bold");
     pdf.text("Quotation For:", margin, y);
@@ -1158,12 +1158,12 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(10);
     pdf.text(`Object: ${appData.detectedObject}`, margin, y); y += 6;
-    pdf.text(`Dimensions: ${appData.dimensions.length} × ${appData.dimensions.width} × ${appData.dimensions.height} cm`, margin, y); y += 6;
+    pdf.text(`Dimensions: ${appData.dimensions.length} x ${appData.dimensions.width} x ${appData.dimensions.height} cm`, margin, y); y += 6;
     pdf.text(`Material: ${appData.packaging.type}`, margin, y); y += 6;
     pdf.text(`Quantity: ${quantity} units`, margin, y); y += 10;
 
-    // ── Table Header ──
-    pdf.setFillColor(254, 243, 199); // amber
+    // Table Header
+    pdf.setFillColor(254, 243, 199);
     pdf.rect(margin, y, pageWidth - margin * 2, 8, "F");
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(10);
@@ -1173,29 +1173,29 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     pdf.text("AMOUNT", 170, y + 5.5);
     y += 8;
 
-    // ── Table Row ──
+    // Table Row
     pdf.setFont("helvetica", "normal");
     pdf.rect(margin, y, pageWidth - margin * 2, 8);
     pdf.text(`${appData.packaging.type} Box`, margin + 2, y + 5.5);
     pdf.text(`${quantity}`, 120, y + 5.5);
-    pdf.text(`₹ ${(materialsCost / quantity).toFixed(2)}`, 140, y + 5.5);
-    pdf.text(`₹ ${materialsCost.toFixed(2)}`, 170, y + 5.5);
+    pdf.text(`Rs. ${(materialsCost / quantity).toFixed(2)}`, 140, y + 5.5);
+    pdf.text(`Rs. ${materialsCost.toFixed(2)}`, 170, y + 5.5);
     y += 20;
 
-    // ── Totals ──
+    // Totals
     const col = 140;
     pdf.setDrawColor(200, 200, 200);
     pdf.line(col, y, pageWidth - margin, y); y += 6;
-    pdf.text("Subtotal:", col, y); pdf.text(`₹ ${subtotal.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
-    pdf.text(`Tax (${(taxRate * 100).toFixed(1)}%):`, col, y); pdf.text(`₹ ${tax.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
-    pdf.text("Shipping:", col, y); pdf.text(`₹ ${shipping.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text("Subtotal:", col, y); pdf.text(`Rs. ${subtotal.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text(`Tax (${(taxRate * 100).toFixed(1)}%):`, col, y); pdf.text(`Rs. ${tax.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text("Shipping:", col, y); pdf.text(`Rs. ${shipping.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
     pdf.line(col, y, pageWidth - margin, y); y += 6;
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(12);
     pdf.setTextColor(22, 163, 74);
-    pdf.text("TOTAL:", col, y); pdf.text(`₹ ${total.toFixed(2)}`, 185, y, { align: "right" });
+    pdf.text("TOTAL:", col, y); pdf.text(`Rs. ${total.toFixed(2)}`, 185, y, { align: "right" });
 
-    // ── Footer ──
+    // Footer
     y += 20;
     pdf.setTextColor(0, 0, 0);
     pdf.setFontSize(10);
