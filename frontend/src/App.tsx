@@ -426,6 +426,18 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
           fragility: data.material?.fragility || "Non-Fragile",
         },
         estimatedWeight: data.weight,
+        packaging: {
+          type: data.packaging.packaging_material,
+          boxDimensions: data.packaging.box_dimensions,
+          cushioning: data.packaging.protection_layer,
+        },
+        bomFull: fullBomData,
+        bom: fullBomData.map((item: any) => ({
+          material: item.material,
+          quantity: item.quantity.toString(),
+          unit: item.unit,
+          usage: item.description,
+        })),
       }));
       
       setCurrentPage("detection");

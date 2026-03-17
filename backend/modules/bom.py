@@ -21,7 +21,6 @@ def generate_bom(packaging_material,
 
     # Surface Area (sq.cm)
     surface_area = round(2 * (
-    surface_area = round(2 * (
         length * width +
         length * height +
         width * height
