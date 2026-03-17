@@ -183,45 +183,155 @@ function ProgressIndicator({ currentStep, totalSteps }: { currentStep: number; t
   );
 }
 
-function Navbar({ showBack, currentPage, setCurrentPage }: { showBack?: boolean; currentPage: Page; setCurrentPage: (p: Page) => void }) {
+function AboutModal({ onClose }: { onClose: () => void }) {
   return (
-    <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 py-4 px-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between">
-          {showBack ? (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                const pages: Page[] = ["landing", "capture", "camera", "detection", "materials", "packaging", "bom", "pricing"];
-                const currentIndex = pages.indexOf(currentPage);
-                if (currentIndex > 0) setCurrentPage(pages[currentIndex - 1]);
-              }}
-              className="hover:bg-gray-100"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-          ) : (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-teal-600 p-6 rounded-t-2xl">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
                 <Package className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">PACKSMART</h1>
+              <h2 className="text-2xl font-bold text-white">About PACKSMART</h2>
+            </div>
+            <button onClick={onClose} className="text-white/80 hover:text-white transition-colors">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-8">
+          {/* Vision & Mission */}
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
+              <Eye className="w-5 h-5 text-blue-600" />
+              <span>Vision & Mission</span>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <p className="text-sm font-bold text-blue-700 mb-2">Our Vision</p>
+                <p className="text-sm text-gray-700">To revolutionize packaging through AI-powered automation, making smart decisions accessible to every business.</p>
+              </div>
+              <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
+                <p className="text-sm font-bold text-teal-700 mb-2">Our Mission</p>
+                <p className="text-sm text-gray-700">Making smart, sustainable packaging decisions accessible to every business — simply by taking images.</p>
               </div>
             </div>
-          )}
-          {!showBack && (
-            <div className="hidden md:flex items-center space-x-8">
-              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">Workflow</button>
-              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">Technology</button>
-              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">Modules</button>
-              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">About</button>
+          </div>
+
+          {/* How to Use */}
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
+              <FileText className="w-5 h-5 text-teal-600" />
+              <span>How to Use PACKSMART</span>
+            </h3>
+            <div className="space-y-3">
+              {[
+                { step: 1, title: "Capture Images", desc: "Take top and side view images of your object using your device camera or upload from gallery.", color: "from-blue-500 to-blue-600" },
+                { step: 2, title: "Enter Known Width", desc: "Provide the real-world width of your object in centimeters for accurate dimension scaling.", color: "from-teal-500 to-teal-600" },
+                { step: 3, title: "Run Detection", desc: "Click Run Detection — our AI analyzes your object, detects what it is and calculates dimensions.", color: "from-cyan-500 to-cyan-600" },
+                { step: 4, title: "Review Results", desc: "See the detected object name, confidence score, real-world dimensions, and material composition.", color: "from-violet-500 to-violet-600" },
+                { step: 5, title: "Get Packaging Recommendation", desc: "View optimized box dimensions, 2D dieline layout, and required cushioning materials.", color: "from-orange-500 to-orange-600" },
+                { step: 6, title: "Download Quotation", desc: "Fill in your company details and download a professional PDF quotation instantly.", color: "from-green-500 to-green-600" },
+              ].map((item) => (
+                <div key={item.step} className="flex items-start space-x-4">
+                  <div className={`w-8 h-8 bg-gradient-to-br ${item.color} rounded-lg flex items-center justify-center flex-shrink-0 shadow-md`}>
+                    <span className="text-white text-sm font-bold">{item.step}</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                    <p className="text-sm text-gray-600">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
+
+          {/* Tech Stack */}
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
+              <Cpu className="w-5 h-5 text-violet-600" />
+              <span>Technology Behind PackSmart</span>
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {["YOLO Object Detection", "EfficientNet B4", "OpenCV", "FastAPI", "React + TypeScript", "Computer Vision"].map((tech) => (
+                <div key={tech} className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+                  <p className="text-xs font-semibold text-gray-700">{tech}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
-    </nav>
+      </motion.div>
+    </div>
+  );
+}
+
+function Navbar({ showBack, currentPage, setCurrentPage }: { showBack?: boolean; currentPage: Page; setCurrentPage: (p: Page) => void }) {
+  const [showAbout, setShowAbout] = useState(false);
+
+  return (
+    <>
+      <AnimatePresence>
+        {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
+      </AnimatePresence>
+      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 py-4 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between">
+            {showBack ? (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  const pages: Page[] = ["landing", "capture", "camera", "detection", "materials", "packaging", "bom", "pricing"];
+                  const currentIndex = pages.indexOf(currentPage);
+                  if (currentIndex > 0) setCurrentPage(pages[currentIndex - 1]);
+                }}
+                className="hover:bg-gray-100"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+            ) : (
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Package className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">PACKSMART</h1>
+                </div>
+              </div>
+            )}
+            {!showBack && (
+              <div className="hidden md:flex items-center space-x-8">
+                <button
+                  onClick={() => document.getElementById("modules-section")?.scrollIntoView({ behavior: "smooth" })}
+                  className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">
+                  Modules
+                </button>
+                <button
+                  onClick={() => document.getElementById("footer-section")?.scrollIntoView({ behavior: "smooth" })}
+                  className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">
+                  Technology
+                </button>
+                <button
+                  onClick={() => setShowAbout(true)}
+                  className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">
+                  About
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </nav>
+    </>
   );
 }
 
@@ -321,7 +431,7 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
         </div>
       </section>
 
-      <footer className="bg-gray-900 text-white py-16 px-6">
+      <footer id="footer-section" className="bg-gray-900 text-white py-16 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             <div>
