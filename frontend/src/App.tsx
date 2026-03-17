@@ -81,10 +81,10 @@ type AppData = {
     height: number;
     volume: number;
   };
-  materials: {
-    cardboard: number;
-    plastic: number;
-  };
+  materials: Array<{
+    name: string;
+    confidence: number;
+  }>;
   materialProperties: {
     category: string;
     fragility: string;
@@ -192,155 +192,45 @@ function ProgressIndicator({ currentStep, totalSteps }: { currentStep: number; t
   );
 }
 
-function AboutModal({ onClose }: { onClose: () => void }) {
+function Navbar({ showBack, currentPage, setCurrentPage }: { showBack?: boolean; currentPage: Page; setCurrentPage: (p: Page) => void }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.9 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-teal-600 p-6 rounded-t-2xl">
-          <div className="flex items-center justify-between">
+    <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 py-4 px-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between">
+          {showBack ? (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                const pages: Page[] = ["landing", "capture", "camera", "detection", "materials", "packaging", "bom", "pricing"];
+                const currentIndex = pages.indexOf(currentPage);
+                if (currentIndex > 0) setCurrentPage(pages[currentIndex - 1]);
+              }}
+              className="hover:bg-gray-100"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+          ) : (
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
                 <Package className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-white">About PACKSMART</h2>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">PACKSMART</h1>
+              </div>
             </div>
-            <button onClick={onClose} className="text-white/80 hover:text-white transition-colors">
-              <X className="w-6 h-6" />
-            </button>
-          </div>
+          )}
+          {!showBack && (
+            <div className="hidden md:flex items-center space-x-8">
+              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">Workflow</button>
+              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">Technology</button>
+              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">Modules</button>
+              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">About</button>
+            </div>
+          )}
         </div>
-
-        <div className="p-6 space-y-8">
-          {/* Vision & Mission */}
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
-              <Eye className="w-5 h-5 text-blue-600" />
-              <span>Vision & Mission</span>
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <p className="text-sm font-bold text-blue-700 mb-2">Our Vision</p>
-                <p className="text-sm text-gray-700">To revolutionize packaging through AI-powered automation, making smart decisions accessible to every business.</p>
-              </div>
-              <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
-                <p className="text-sm font-bold text-teal-700 mb-2">Our Mission</p>
-                <p className="text-sm text-gray-700">Making smart, sustainable packaging decisions accessible to every business — simply by taking images.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* How to Use */}
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
-              <FileText className="w-5 h-5 text-teal-600" />
-              <span>How to Use PACKSMART</span>
-            </h3>
-            <div className="space-y-3">
-              {[
-                { step: 1, title: "Capture Images", desc: "Take top and side view images of your object using your device camera or upload from gallery.", color: "from-blue-500 to-blue-600" },
-                { step: 2, title: "Enter Known Width", desc: "Provide the real-world width of your object in centimeters for accurate dimension scaling.", color: "from-teal-500 to-teal-600" },
-                { step: 3, title: "Run Detection", desc: "Click Run Detection — our AI analyzes your object, detects what it is and calculates dimensions.", color: "from-cyan-500 to-cyan-600" },
-                { step: 4, title: "Review Results", desc: "See the detected object name, confidence score, real-world dimensions, and material composition.", color: "from-violet-500 to-violet-600" },
-                { step: 5, title: "Get Packaging Recommendation", desc: "View optimized box dimensions, 2D dieline layout, and required cushioning materials.", color: "from-orange-500 to-orange-600" },
-                { step: 6, title: "Download Quotation", desc: "Fill in your company details and download a professional PDF quotation instantly.", color: "from-green-500 to-green-600" },
-              ].map((item) => (
-                <div key={item.step} className="flex items-start space-x-4">
-                  <div className={`w-8 h-8 bg-gradient-to-br ${item.color} rounded-lg flex items-center justify-center flex-shrink-0 shadow-md`}>
-                    <span className="text-white text-sm font-bold">{item.step}</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{item.title}</p>
-                    <p className="text-sm text-gray-600">{item.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Tech Stack */}
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
-              <Cpu className="w-5 h-5 text-violet-600" />
-              <span>Technology Behind PackSmart</span>
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {["YOLO Object Detection", "EfficientNet B4", "OpenCV", "FastAPI", "React + TypeScript", "Computer Vision"].map((tech) => (
-                <div key={tech} className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
-                  <p className="text-xs font-semibold text-gray-700">{tech}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
-function Navbar({ showBack, currentPage, setCurrentPage }: { showBack?: boolean; currentPage: Page; setCurrentPage: (p: Page) => void }) {
-  const [showAbout, setShowAbout] = useState(false);
-
-  return (
-    <>
-      <AnimatePresence>
-        {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
-      </AnimatePresence>
-      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 py-4 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            {showBack ? (
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  const pages: Page[] = ["landing", "capture", "detection", "materials", "packaging", "bom", "pricing"];
-                  const currentIndex = pages.indexOf(currentPage);
-                  if (currentIndex > 0) setCurrentPage(pages[currentIndex - 1]);
-                }}
-                className="hover:bg-gray-100"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
-              </Button>
-            ) : (
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Package className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">PACKSMART</h1>
-                </div>
-              </div>
-            )}
-            {!showBack && (
-              <div className="hidden md:flex items-center space-x-8">
-                <button
-                  onClick={() => document.getElementById("modules-section")?.scrollIntoView({ behavior: "smooth" })}
-                  className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">
-                  Modules
-                </button>
-                <button
-                  onClick={() => document.getElementById("footer-section")?.scrollIntoView({ behavior: "smooth" })}
-                  className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">
-                  Technology
-                </button>
-                <button
-                  onClick={() => setShowAbout(true)}
-                  className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">
-                  About
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </nav>
-    </>
+      </div>
+    </nav>
   );
 }
 
@@ -368,7 +258,7 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
                 </span>
               </h1>
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-              Capture product images, estimate real-world dimensions, identify materials, and generate optimized packaging solutions — simply by taking images.
+                Capture product images, estimate real-world dimensions, identify materials, and generate optimized packaging solutions — instantly.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Button size="lg" onClick={() => setCurrentPage("capture")} className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl hover:shadow-2xl transition-all">
@@ -440,7 +330,7 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
         </div>
       </section>
 
-      <footer id="footer-section" className="bg-gray-900 text-white py-16 px-6">
+      <footer className="bg-gray-900 text-white py-16 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             <div>
@@ -499,8 +389,8 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
 
     try {
       const formData = new FormData();
-      formData.append("front_image", appData.sideViewImage.file);
       formData.append("top_image", appData.topViewImage.file);
+      formData.append("front_image", appData.sideViewImage.file);
       formData.append("real_width_cm", appData.knownWidth);
 
       const response = await fetch("http://localhost:8000/api/analyze", {
@@ -521,7 +411,7 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
       setAppData(prev => ({
         ...prev,
         detectedObject: data.object_name || "Detected Object",
-        confidence: data.confidence || prev.confidence,
+        confidence: data.object_confidence || prev.confidence,
         dimensions: {
           length: data.real_dimensions.length_cm,
           width: data.real_dimensions.width_cm,
@@ -530,8 +420,8 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
         },
         materials: data.material.materials,
         materialProperties: {
-          category: data.object_name || "Unknown",
-          fragility: "Moderate",
+          category: data.material.object_category || "Unknown",
+          fragility: data.material.fragility || "Non-Fragile",
         },
         estimatedWeight: data.weight,
         packaging: {
@@ -569,15 +459,15 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Front View Card */}
+          {/* Top View Card */}
           <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2"><Camera className="w-5 h-5 text-blue-600" /><span>Front View Image</span></CardTitle>
+              <CardTitle className="flex items-center space-x-2"><Camera className="w-5 h-5 text-blue-600" /><span>Top View Image</span></CardTitle>
             </CardHeader>
             <CardContent>
               {appData.topViewImage ? (
                 <div className="relative group">
-                  <ImageWithFallback src={appData.topViewImage.url} alt="Front view" className="w-full h-64 object-cover rounded-xl" />
+                  <ImageWithFallback src={appData.topViewImage.url} alt="Top view" className="w-full h-64 object-cover rounded-xl" />
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => openCamera("top")} className="bg-white hover:bg-gray-100"><Camera className="w-4 h-4 mr-1" />Re-capture</Button>
                     <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const url = URL.createObjectURL(file); setAppData(prev => ({ ...prev, topViewImage: { url, file } })); } }; input.click(); }} className="bg-white hover:bg-gray-100"><Upload className="w-4 h-4 mr-1" />Re-upload</Button>
@@ -599,15 +489,15 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
             </CardContent>
           </Card>
 
-          {/* Top View Card */}
+          {/* Side View Card */}
           <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2"><Camera className="w-5 h-5 text-blue-600" /><span>Top View Image</span></CardTitle>
+              <CardTitle className="flex items-center space-x-2"><Camera className="w-5 h-5 text-blue-600" /><span>Side View Image</span></CardTitle>
             </CardHeader>
             <CardContent>
               {appData.sideViewImage ? (
                 <div className="relative group">
-                  <ImageWithFallback src={appData.sideViewImage.url} alt="Top view" className="w-full h-64 object-cover rounded-xl" />
+                  <ImageWithFallback src={appData.sideViewImage.url} alt="Side view" className="w-full h-64 object-cover rounded-xl" />
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => openCamera("side")} className="bg-white hover:bg-gray-100"><Camera className="w-4 h-4 mr-1" />Re-capture</Button>
                     <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const url = URL.createObjectURL(file); setAppData(prev => ({ ...prev, sideViewImage: { url, file } })); } }; input.click(); }} className="bg-white hover:bg-gray-100"><Upload className="w-4 h-4 mr-1" />Re-upload</Button>
@@ -941,7 +831,7 @@ function DetectionPage({ appData, currentPage, setCurrentPage }: PageProps) {
             <CardHeader><CardTitle className="flex items-center space-x-2"><Scan className="w-5 h-5 text-green-600" /><span>Object Detection Results</span></CardTitle></CardHeader>
             <CardContent>
               <div className="relative mb-6">
-                {appData.sideViewImage && <ImageWithFallback src={appData.sideViewImage.url} alt="Front view detected" className="w-full h-64 object-cover rounded-xl" />}
+                {appData.topViewImage && <ImageWithFallback src={appData.topViewImage.url} alt="Detected object" className="w-full h-64 object-cover rounded-xl" />}
                 <div className="absolute inset-8 border-4 border-green-500 rounded-lg">
                   <div className="absolute -top-3 -left-3 w-6 h-6 bg-green-500 rounded-full"></div>
                   <div className="absolute -top-3 -right-3 w-6 h-6 bg-green-500 rounded-full"></div>
@@ -1002,18 +892,18 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
         <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm mb-8">
           <CardHeader><CardTitle className="flex items-center space-x-2"><Layers className="w-5 h-5 text-violet-600" /><span>Material Composition Analysis</span></CardTitle></CardHeader>
           <CardContent className="space-y-6">
-            {Object.entries(appData.materials).map(([material, percentage], index) => (
-              <motion.div key={material} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }}>
+            {appData.materials.map((material, index) => (
+              <motion.div key={material.name} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${material === "cardboard" ? "bg-gradient-to-br from-amber-500 to-orange-500" : material === "plastic" ? "bg-gradient-to-br from-blue-500 to-cyan-500" : "bg-gradient-to-br from-gray-500 to-gray-600"}`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${index === 0 ? "bg-gradient-to-br from-blue-500 to-cyan-500" : "bg-gradient-to-br from-purple-500 to-pink-500"}`}>
                       <Box className="w-5 h-5 text-white" />
                     </div>
-                    <span className="text-lg font-semibold text-gray-900 capitalize">{material}</span>
+                    <span className="text-lg font-semibold text-gray-900">{material.name}</span>
                   </div>
-                  <span className="text-2xl font-bold text-gray-900">{percentage}%</span>
+                  <span className="text-2xl font-bold text-gray-900">{material.confidence.toFixed(1)}%</span>
                 </div>
-                <Progress value={percentage} className="h-4" />
+                <Progress value={material.confidence} className="h-4" />
               </motion.div>
             ))}
           </CardContent>
@@ -1051,10 +941,8 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
               <Weight className="w-12 h-12 mx-auto mb-4 opacity-80" />
               <p className="text-lg font-medium mb-2 opacity-90">Estimated Weight (AI Predicted)</p>
               <div className="flex items-end justify-center space-x-2 mb-2">
-                <span className="text-6xl font-bold">
-                  {appData.estimatedWeight >= 1 ? appData.estimatedWeight : Math.round(appData.estimatedWeight * 1000)}
-                </span>
-                <span className="text-2xl mb-3 opacity-80">{appData.estimatedWeight >= 1 ? "kg" : "g"}</span>
+                <span className="text-6xl font-bold">{appData.estimatedWeight}</span>
+                <span className="text-2xl mb-3 opacity-80">kg</span>
               </div>
               <p className="text-sm opacity-80">Based on material density analysis</p>
             </CardContent>
@@ -1312,22 +1200,22 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     pdf.rect(margin, y, pageWidth - margin * 2, 8);
     pdf.text(`${appData.packaging.type} Box`, margin + 2, y + 5.5);
     pdf.text(`${quantity}`, 120, y + 5.5);
-    pdf.text(`Rs. ${(materialsCost / quantity).toFixed(2)}`, 140, y + 5.5);
-    pdf.text(`Rs. ${materialsCost.toFixed(2)}`, 170, y + 5.5);
+    pdf.text(`₹ ${(materialsCost / quantity).toFixed(2)}`, 140, y + 5.5);
+    pdf.text(`₹ ${materialsCost.toFixed(2)}`, 170, y + 5.5);
     y += 20;
 
     // ── Totals ──
     const col = 140;
     pdf.setDrawColor(200, 200, 200);
     pdf.line(col, y, pageWidth - margin, y); y += 6;
-    pdf.text("Subtotal:", col, y); pdf.text(`Rs. ${subtotal.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
-    pdf.text(`Tax (${(taxRate * 100).toFixed(1)}%):`, col, y); pdf.text(`Rs. ${tax.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
-    pdf.text("Shipping:", col, y); pdf.text(`Rs. ${shipping.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text("Subtotal:", col, y); pdf.text(`₹ ${subtotal.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text(`Tax (${(taxRate * 100).toFixed(1)}%):`, col, y); pdf.text(`₹ ${tax.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text("Shipping:", col, y); pdf.text(`₹ ${shipping.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
     pdf.line(col, y, pageWidth - margin, y); y += 6;
     pdf.setFont("times", "bold");
     pdf.setFontSize(12);
     pdf.setTextColor(22, 163, 74);
-    pdf.text("TOTAL:", col, y); pdf.text(`Rs. ${total.toFixed(2)}`, 185, y, { align: "right" });
+    pdf.text("TOTAL:", col, y); pdf.text(`₹ ${total.toFixed(2)}`, 185, y, { align: "right" });
 
     // ── Footer ──
     y += 20;
@@ -1343,7 +1231,10 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     topViewImage: null, sideViewImage: null, knownWidth: "",
     detectedObject: "Plastic Bottle", confidence: 94,
     dimensions: { length: 22.5, width: 7.8, height: 16.4, volume: 2876.4 },
-    materials: { cardboard: 72, plastic: 28 },
+    materials: [
+      { name: "Cardboard", confidence: 72 },
+      { name: "Plastic", confidence: 28 }
+    ],
     materialProperties: { category: "Consumer Goods", fragility: "Moderate" },
     estimatedWeight: 0.38, realWeight: "",
     packaging: { type: "Corrugated Cardboard Box", boxDimensions: "28 × 14 × 22 cm", cushioning: "Bubble Wrap + Edge Protectors" },
@@ -1440,10 +1331,10 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
             </div>
             <div className="flex justify-end mb-8">
               <div className="w-full md:w-1/2 bg-amber-50 border border-gray-300 rounded-lg">
-                <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">SUBTOTAL</span><span className="font-semibold text-gray-900">Rs. {subtotal.toFixed(2)}</span></div>
+                <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">SUBTOTAL</span><span className="font-semibold text-gray-900">₹ {subtotal.toFixed(2)}</span></div>
                 <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">TAX RATE</span><span className="font-semibold text-gray-900">{(taxRate * 100).toFixed(2)}%</span></div>
                 <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">SALES TAX</span><span className="font-semibold text-gray-900">{tax.toFixed(2)}</span></div>
-                <div className="flex justify-between px-4 py-4 bg-white rounded-b-lg"><span className="text-xl font-bold text-gray-900">TOTAL</span><span className="text-xl font-bold text-green-600">Rs. {total.toFixed(2)}</span></div>
+                <div className="flex justify-between px-4 py-4 bg-white rounded-b-lg"><span className="text-xl font-bold text-gray-900">TOTAL</span><span className="text-xl font-bold text-green-600">₹ {total.toFixed(2)}</span></div>
               </div>
             </div>
             <div className="text-center"><p className="text-lg font-bold text-green-700">THANK YOU FOR YOUR BUSINESS!</p></div>
@@ -1537,7 +1428,10 @@ export default function App() {
     topViewImage: null, sideViewImage: null, knownWidth: "",
     detectedObject: "Plastic Bottle", confidence: 94,
     dimensions: { length: 22.5, width: 7.8, height: 16.4, volume: 2876.4 },
-    materials: { cardboard: 72, plastic: 28 },
+    materials: [
+      { name: "Plastic", confidence: 72 },
+      { name: "Cardboard", confidence: 28 }
+    ],
     materialProperties: { category: "Consumer Goods", fragility: "Moderate" },
     estimatedWeight: 0.38, realWeight: "",
     packaging: { type: "Corrugated Cardboard Box", boxDimensions: "28 × 14 × 22 cm", cushioning: "Bubble Wrap + Edge Protectors" },
