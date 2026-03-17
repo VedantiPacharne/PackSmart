@@ -17,17 +17,30 @@ type BoxDielineProps = {
 };
 
 export default function BoxDieline({ length, width, height }: BoxDielineProps) {
-  // ── Scale: fit into SVG canvas ──────────────────────────────────────────────
-  const SCALE = 6; // pixels per cm — adjust if box looks too big/small
-  const PADDING = 60;
+  // ── Scale: fit into SVG canvas and avoid overflow ───────────────────────────
+  const MAX_CANVAS_SIZE = 460; // max width/height in pixels for the SVG viewport
+  const PADDING = 24;
 
-  const W = width * SCALE;   // front face width
-  const H = height * SCALE;  // front face height
-  const L = length * SCALE;  // depth (side face width)
+  const rawW = Math.max(1, width);
+  const rawH = Math.max(1, height);
+  const rawL = Math.max(1, length);
 
-  // Total SVG size needed
-  const svgWidth = L + W + L + W + PADDING * 2;       // left+front+right+back
-  const svgHeight = H + H + H + PADDING * 2;           // top+middle+bottom (extra H for flaps)
+  const neededWidth = rawL + rawW + rawL + rawW;
+  const neededHeight = rawH * 3;
+
+  const proposedScale = Math.min(
+    (MAX_CANVAS_SIZE - PADDING * 2) / neededWidth,
+    (MAX_CANVAS_SIZE - PADDING * 2) / neededHeight
+  );
+
+  const SCALE = Math.max(0.6, Math.min(6, proposedScale));
+
+  const W = rawW * SCALE;
+  const H = rawH * SCALE;
+  const L = rawL * SCALE;
+
+  const svgWidth = Math.max(MAX_CANVAS_SIZE, Math.ceil(neededWidth + PADDING * 2));
+  const svgHeight = Math.max(MAX_CANVAS_SIZE, Math.ceil(neededHeight + PADDING * 2));
 
   // Origin point (top-left of FRONT face)
   const ox = PADDING + L;
@@ -73,7 +86,7 @@ export default function BoxDieline({ length, width, height }: BoxDielineProps) {
   );
 
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="w-full overflow-hidden">
       <svg
         width={svgWidth}
         height={svgHeight}

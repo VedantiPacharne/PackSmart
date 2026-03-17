@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import {
   Package,
   Upload,
@@ -51,6 +53,7 @@ import {
 } from "./components/ui/table";
 import { ImageWithFallback } from "./components/figma/ImageWithFallback";
 import BoxDieline from "./components/BoxDieline";
+import PackSmart3D, { BoxType } from "./components/PackSmart3D";
 
 type Page =
   | "landing"
@@ -921,7 +924,17 @@ function DetectionPage({ appData, currentPage, setCurrentPage }: PageProps) {
             <CardHeader><CardTitle className="flex items-center space-x-2"><Scan className="w-5 h-5 text-green-600" /><span>Object Detection Results</span></CardTitle></CardHeader>
             <CardContent>
               <div className="relative mb-6">
-                {appData.topViewImage && <ImageWithFallback src={appData.topViewImage.url} alt="Detected object" className="w-full h-64 object-cover rounded-xl" />}
+                {(appData.sideViewImage || appData.topViewImage) ? (
+                  <ImageWithFallback
+                    src={appData.sideViewImage?.url ?? appData.topViewImage?.url ?? ""}
+                    alt="Detected object"
+                    className="w-full h-64 object-cover rounded-xl"
+                  />
+                ) : (
+                  <div className="w-full h-64 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500">
+                    No side/top view image available.
+                  </div>
+                )}
                 <div className="absolute inset-8 border-4 border-green-500 rounded-lg">
                   <div className="absolute -top-3 -left-3 w-6 h-6 bg-green-500 rounded-full"></div>
                   <div className="absolute -top-3 -right-3 w-6 h-6 bg-green-500 rounded-full"></div>
@@ -1071,6 +1084,13 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
 }
 
 function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
+  const currentBoxType: BoxType = (() => {
+    const low = appData.packaging.type.toLowerCase();
+    if (low.includes("bottle")) return "bottle";
+    if (low.includes("plywood") || low.includes("wood")) return "plywood";
+    return "cardboard";
+  })();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
       <Navbar showBack currentPage={currentPage} setCurrentPage={setCurrentPage} />
@@ -1102,31 +1122,28 @@ function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
           <Card className="border-0 shadow-lg bg-white">
             <CardContent className="p-8">
               <div className="flex items-center space-x-2 mb-6"><FileText className="w-5 h-5 text-blue-600" /><h3 className="font-semibold text-gray-900">2D Flat Layout</h3></div>
-          <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-6 flex flex-col items-center justify-center min-h-[400px]">
-              <BoxDieline
-                length={appData.dimensions.length}
-                width={appData.dimensions.width}
-                height={appData.dimensions.height}
-              />
-              <p className="text-sm text-gray-600 mt-4">Scaled 2D box dieline — fold on dashed lines, cut on solid lines</p>
-            </div>
+              <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-6 flex flex-col items-center justify-center min-h-[440px]">
+                <BoxDieline
+                  length={appData.dimensions.length}
+                  width={appData.dimensions.width}
+                  height={appData.dimensions.height}
+                />
+                <p className="text-sm text-gray-600 mt-4">Scaled 2D box dieline — fold on dashed lines, cut on solid lines</p>
+              </div>
             </CardContent>
           </Card>
+
           <Card className="border-0 shadow-lg bg-white">
             <CardContent className="p-8">
               <div className="flex items-center space-x-2 mb-6"><Box className="w-5 h-5 text-purple-600" /><h3 className="font-semibold text-gray-900">3D Interactive Preview</h3></div>
-              <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-purple-100 rounded-lg p-12 flex flex-col items-center justify-center min-h-[400px]">
-                <div className="relative w-48 h-48 flex items-center justify-center mb-6">
-                  <div className="relative transform rotate-12">
-                    <div className="relative w-36 h-36">
-                      <div className="absolute inset-0 bg-gradient-to-br from-orange-300 to-orange-400 border-2 border-orange-500 rounded-lg shadow-2xl flex items-center justify-center"><div className="text-orange-700 text-center"><p className="text-sm font-bold">3D Box</p></div></div>
-                      <div className="absolute -top-9 left-9 w-36 h-18 bg-gradient-to-br from-orange-200 to-orange-300 border-2 border-orange-400 rounded-lg transform -skew-y-12 origin-bottom-left shadow-xl"></div>
-                      <div className="absolute top-9 -right-9 w-18 h-36 bg-gradient-to-br from-orange-400 to-orange-500 border-2 border-orange-600 rounded-lg transform skew-x-12 origin-top-left shadow-xl"></div>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-700 mb-3">Interactive 3D model</p>
-                <Button size="sm" variant="outline" className="border-gray-300 text-gray-700 bg-white hover:bg-gray-50"><RotateCcw className="w-3 h-3 mr-2" />Rotate View</Button>
+              <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-purple-100 rounded-lg p-4 min-h-[459px]">
+                  <PackSmart3D
+                  length={appData.dimensions.length}
+                  breadth={appData.dimensions.width}
+                  height={appData.dimensions.height}
+                  boxType={currentBoxType}
+                />
+                <p className="text-sm text-gray-700 mt-3 text-center">Drag inside the 3D view to orbit, right-drag to pan, wheel to zoom. Model type follows recommended packaging: {appData.packaging.type}.</p>
               </div>
             </CardContent>
           </Card>
