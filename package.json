@@ -4,7 +4,6 @@
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
-    "jspdf": "^4.2.0",
-    "three": "^0.183.2"
+    "jspdf": "^4.2.0"
   }
 }
