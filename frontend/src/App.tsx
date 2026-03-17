@@ -365,9 +365,9 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
                 <Button size="lg" onClick={() => setCurrentPage("capture")} className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl hover:shadow-2xl transition-all">
                   Get Started <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
-                <Button size="lg" variant="outline" className="border-2 border-gray-300 hover:border-blue-500 px-8 py-6 rounded-xl">
-                  <Play className="w-4 h-4 mr-2" /> View Workflow
-                </Button>
+                <Button size="lg" variant="outline" onClick={() => document.getElementById("modules-section")?.scrollIntoView({ behavior: "smooth" })} className="border-2 border-gray-300 hover:border-blue-500 px-8 py-6 rounded-xl">
+  <Play className="w-4 h-4 mr-2" /> View Workflow
+</Button>
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="relative">
