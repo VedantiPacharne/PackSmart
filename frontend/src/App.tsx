@@ -290,7 +290,7 @@ function Navbar({ showBack, currentPage, setCurrentPage }: { showBack?: boolean;
               <Button
                 variant="ghost"
                 onClick={() => {
-                  const pages: Page[] = ["landing", "capture", "camera", "detection", "materials", "packaging", "bom", "pricing"];
+                  const pages: Page[] = ["landing", "capture", "detection", "materials", "packaging", "bom", "pricing"];
                   const currentIndex = pages.indexOf(currentPage);
                   if (currentIndex > 0) setCurrentPage(pages[currentIndex - 1]);
                 }}
@@ -359,15 +359,15 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
                 </span>
               </h1>
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Capture product images, estimate real-world dimensions, identify materials, and generate optimized packaging solutions — instantly.
+              Capture product images, estimate real-world dimensions, identify materials, and generate optimized packaging solutions — simply by taking images.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Button size="lg" onClick={() => setCurrentPage("capture")} className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl hover:shadow-2xl transition-all">
                   Get Started <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
-                <Button size="lg" variant="outline" onClick={() => document.getElementById("modules-section")?.scrollIntoView({ behavior: "smooth" })} className="border-2 border-gray-300 hover:border-blue-500 px-8 py-6 rounded-xl">
-  <Play className="w-4 h-4 mr-2" /> View Workflow
-</Button>
+                <Button size="lg" variant="outline" className="border-2 border-gray-300 hover:border-blue-500 px-8 py-6 rounded-xl">
+                  <Play className="w-4 h-4 mr-2" /> View Workflow
+                </Button>
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="relative">
@@ -490,8 +490,8 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
 
     try {
       const formData = new FormData();
-      formData.append("top_image", appData.topViewImage.file);
       formData.append("front_image", appData.sideViewImage.file);
+      formData.append("top_image", appData.topViewImage.file);
       formData.append("real_width_cm", appData.knownWidth);
 
       const response = await fetch("http://localhost:8000/api/analyze", {
@@ -549,15 +549,15 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Top View Card */}
+          {/* Front View Card */}
           <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2"><Camera className="w-5 h-5 text-blue-600" /><span>Top View Image</span></CardTitle>
+              <CardTitle className="flex items-center space-x-2"><Camera className="w-5 h-5 text-blue-600" /><span>Front View Image</span></CardTitle>
             </CardHeader>
             <CardContent>
               {appData.topViewImage ? (
                 <div className="relative group">
-                  <ImageWithFallback src={appData.topViewImage.url} alt="Top view" className="w-full h-64 object-cover rounded-xl" />
+                  <ImageWithFallback src={appData.topViewImage.url} alt="Front view" className="w-full h-64 object-cover rounded-xl" />
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => openCamera("top")} className="bg-white hover:bg-gray-100"><Camera className="w-4 h-4 mr-1" />Re-capture</Button>
                     <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const url = URL.createObjectURL(file); setAppData(prev => ({ ...prev, topViewImage: { url, file } })); } }; input.click(); }} className="bg-white hover:bg-gray-100"><Upload className="w-4 h-4 mr-1" />Re-upload</Button>
@@ -579,15 +579,15 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
             </CardContent>
           </Card>
 
-          {/* Side View Card */}
+          {/* Top View Card */}
           <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2"><Camera className="w-5 h-5 text-blue-600" /><span>Side View Image</span></CardTitle>
+              <CardTitle className="flex items-center space-x-2"><Camera className="w-5 h-5 text-blue-600" /><span>Top View Image</span></CardTitle>
             </CardHeader>
             <CardContent>
               {appData.sideViewImage ? (
                 <div className="relative group">
-                  <ImageWithFallback src={appData.sideViewImage.url} alt="Side view" className="w-full h-64 object-cover rounded-xl" />
+                  <ImageWithFallback src={appData.sideViewImage.url} alt="Top view" className="w-full h-64 object-cover rounded-xl" />
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => openCamera("side")} className="bg-white hover:bg-gray-100"><Camera className="w-4 h-4 mr-1" />Re-capture</Button>
                     <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const url = URL.createObjectURL(file); setAppData(prev => ({ ...prev, sideViewImage: { url, file } })); } }; input.click(); }} className="bg-white hover:bg-gray-100"><Upload className="w-4 h-4 mr-1" />Re-upload</Button>
@@ -921,7 +921,7 @@ function DetectionPage({ appData, currentPage, setCurrentPage }: PageProps) {
             <CardHeader><CardTitle className="flex items-center space-x-2"><Scan className="w-5 h-5 text-green-600" /><span>Object Detection Results</span></CardTitle></CardHeader>
             <CardContent>
               <div className="relative mb-6">
-                {appData.topViewImage && <ImageWithFallback src={appData.topViewImage.url} alt="Detected object" className="w-full h-64 object-cover rounded-xl" />}
+                {appData.sideViewImage && <ImageWithFallback src={appData.sideViewImage.url} alt="Front view detected" className="w-full h-64 object-cover rounded-xl" />}
                 <div className="absolute inset-8 border-4 border-green-500 rounded-lg">
                   <div className="absolute -top-3 -left-3 w-6 h-6 bg-green-500 rounded-full"></div>
                   <div className="absolute -top-3 -right-3 w-6 h-6 bg-green-500 rounded-full"></div>
@@ -1031,8 +1031,10 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
               <Weight className="w-12 h-12 mx-auto mb-4 opacity-80" />
               <p className="text-lg font-medium mb-2 opacity-90">Estimated Weight (AI Predicted)</p>
               <div className="flex items-end justify-center space-x-2 mb-2">
-                <span className="text-6xl font-bold">{appData.estimatedWeight}</span>
-                <span className="text-2xl mb-3 opacity-80">kg</span>
+                <span className="text-6xl font-bold">
+                  {appData.estimatedWeight >= 1 ? appData.estimatedWeight : Math.round(appData.estimatedWeight * 1000)}
+                </span>
+                <span className="text-2xl mb-3 opacity-80">{appData.estimatedWeight >= 1 ? "kg" : "g"}</span>
               </div>
               <p className="text-sm opacity-80">Based on material density analysis</p>
             </CardContent>
@@ -1290,22 +1292,22 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     pdf.rect(margin, y, pageWidth - margin * 2, 8);
     pdf.text(`${appData.packaging.type} Box`, margin + 2, y + 5.5);
     pdf.text(`${quantity}`, 120, y + 5.5);
-    pdf.text(`₹ ${(materialsCost / quantity).toFixed(2)}`, 140, y + 5.5);
-    pdf.text(`₹ ${materialsCost.toFixed(2)}`, 170, y + 5.5);
+    pdf.text(`Rs. ${(materialsCost / quantity).toFixed(2)}`, 140, y + 5.5);
+    pdf.text(`Rs. ${materialsCost.toFixed(2)}`, 170, y + 5.5);
     y += 20;
 
     // ── Totals ──
     const col = 140;
     pdf.setDrawColor(200, 200, 200);
     pdf.line(col, y, pageWidth - margin, y); y += 6;
-    pdf.text("Subtotal:", col, y); pdf.text(`₹ ${subtotal.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
-    pdf.text(`Tax (${(taxRate * 100).toFixed(1)}%):`, col, y); pdf.text(`₹ ${tax.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
-    pdf.text("Shipping:", col, y); pdf.text(`₹ ${shipping.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text("Subtotal:", col, y); pdf.text(`Rs. ${subtotal.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text(`Tax (${(taxRate * 100).toFixed(1)}%):`, col, y); pdf.text(`Rs. ${tax.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text("Shipping:", col, y); pdf.text(`Rs. ${shipping.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
     pdf.line(col, y, pageWidth - margin, y); y += 6;
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(12);
     pdf.setTextColor(22, 163, 74);
-    pdf.text("TOTAL:", col, y); pdf.text(`₹ ${total.toFixed(2)}`, 185, y, { align: "right" });
+    pdf.text("TOTAL:", col, y); pdf.text(`Rs. ${total.toFixed(2)}`, 185, y, { align: "right" });
 
     // ── Footer ──
     y += 20;
@@ -1397,9 +1399,9 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
                   <tr>
                     <td className="border border-gray-300 px-3 py-3 text-gray-900 font-medium">{quantity}</td>
                     <td className="border border-gray-300 px-3 py-3 text-gray-900">{appData.packaging.type} - {appData.dimensions.length}×{appData.dimensions.width}×{appData.dimensions.height}cm</td>
-                    <td className="border border-gray-300 px-3 py-3 text-gray-900">₹ {(materialsCost / quantity).toFixed(2)}</td>
+                    <td className="border border-gray-300 px-3 py-3 text-gray-900">Rs. {(materialsCost / quantity).toFixed(2)}</td>
                     <td className="border border-gray-300 px-3 py-3 text-center text-gray-900">T</td>
-                    <td className="border border-gray-300 px-3 py-3 text-right text-gray-900 font-medium">₹ {materialsCost.toFixed(2)}</td>
+                    <td className="border border-gray-300 px-3 py-3 text-right text-gray-900 font-medium">Rs. {materialsCost.toFixed(2)}</td>
                   </tr>
                   {[...Array(3)].map((_, i) => (
                     <tr key={i}>
@@ -1415,10 +1417,10 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
             </div>
             <div className="flex justify-end mb-8">
               <div className="w-full md:w-1/2 bg-amber-50 border border-gray-300 rounded-lg">
-                <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">SUBTOTAL</span><span className="font-semibold text-gray-900">₹ {subtotal.toFixed(2)}</span></div>
+                <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">SUBTOTAL</span><span className="font-semibold text-gray-900">Rs. {subtotal.toFixed(2)}</span></div>
                 <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">TAX RATE</span><span className="font-semibold text-gray-900">{(taxRate * 100).toFixed(2)}%</span></div>
                 <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">SALES TAX</span><span className="font-semibold text-gray-900">{tax.toFixed(2)}</span></div>
-                <div className="flex justify-between px-4 py-4 bg-white rounded-b-lg"><span className="text-xl font-bold text-gray-900">TOTAL</span><span className="text-xl font-bold text-green-600">₹ {total.toFixed(2)}</span></div>
+                <div className="flex justify-between px-4 py-4 bg-white rounded-b-lg"><span className="text-xl font-bold text-gray-900">TOTAL</span><span className="text-xl font-bold text-green-600">Rs. {total.toFixed(2)}</span></div>
               </div>
             </div>
             <div className="text-center"><p className="text-lg font-bold text-green-700">THANK YOU FOR YOUR BUSINESS!</p></div>
