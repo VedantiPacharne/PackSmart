@@ -15,16 +15,17 @@ def generate_bom(packaging_material,
     bom = []
 
     # ✅ Fix only dictionary extraction (necessary fix)
-    length = adjusted_dimensions["length_cm"]
-    width = adjusted_dimensions["width_cm"]
-    height = adjusted_dimensions["height_cm"]
+    length = round(adjusted_dimensions["length_cm"], 2)
+    width = round(adjusted_dimensions["width_cm"], 2)
+    height = round(adjusted_dimensions["height_cm"], 2)
 
     # Surface Area (sq.cm)
+    surface_area = round(2 * (
     surface_area = round(2 * (
         length * width +
         length * height +
         width * height
-    ),2)
+    ), 2)
 
     surface_area_sqm = round(surface_area / 10000, 2)
 
