@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import {
   Package,
   Upload,
@@ -83,10 +81,10 @@ type AppData = {
     height: number;
     volume: number;
   };
-  materials: Array<{
-    name: string;
-    confidence: number;
-  }>;
+  materials: {
+    cardboard: number;
+    plastic: number;
+  };
   materialProperties: {
     category: string;
     fragility: string;
@@ -403,17 +401,19 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
       setAppData(prev => ({
         ...prev,
         detectedObject: data.object_name || "Detected Object",
-        confidence: data.object_confidence || prev.confidence,
+        confidence: data.confidence || prev.confidence,
         dimensions: {
           length: data.real_dimensions.length_cm,
           width: data.real_dimensions.width_cm,
           height: data.real_dimensions.height_cm,
           volume: data.real_dimensions.volume_cm3,
         },
-        materials: data.material.materials || prev.materials,
+        materials: {
+          [data.material.material]: 100,
+        },
         materialProperties: {
-          category: data.material.object_category || "Unknown",
-          fragility: data.material.fragility || "Non-Fragile",
+          category: data.object_name || "Unknown",
+          fragility: "Moderate",
         },
         estimatedWeight: data.weight,
       }));
@@ -872,18 +872,18 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
         <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm mb-8">
           <CardHeader><CardTitle className="flex items-center space-x-2"><Layers className="w-5 h-5 text-violet-600" /><span>Material Composition Analysis</span></CardTitle></CardHeader>
           <CardContent className="space-y-6">
-            {appData.materials.map((material, index) => (
-              <motion.div key={material.name} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }}>
+            {Object.entries(appData.materials).map(([material, percentage], index) => (
+              <motion.div key={material} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${index === 0 ? "bg-gradient-to-br from-blue-500 to-cyan-500" : "bg-gradient-to-br from-purple-500 to-pink-500"}`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${material === "cardboard" ? "bg-gradient-to-br from-amber-500 to-orange-500" : material === "plastic" ? "bg-gradient-to-br from-blue-500 to-cyan-500" : "bg-gradient-to-br from-gray-500 to-gray-600"}`}>
                       <Box className="w-5 h-5 text-white" />
                     </div>
-                    <span className="text-lg font-semibold text-gray-900">{material.name}</span>
+                    <span className="text-lg font-semibold text-gray-900 capitalize">{material}</span>
                   </div>
-                  <span className="text-2xl font-bold text-gray-900">{material.confidence.toFixed(1)}%</span>
+                  <span className="text-2xl font-bold text-gray-900">{percentage}%</span>
                 </div>
-                <Progress value={material.confidence} className="h-4" />
+                <Progress value={percentage} className="h-4" />
               </motion.div>
             ))}
           </CardContent>
@@ -960,155 +960,7 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
   );
 }
 
-type Box3DProps = {
-  length: number;
-  width: number;
-  height: number;
-  viewMode: "closed" | "open-top" | "open-side";
-  material: string;
-};
-
-function Box3D({ length, width, height, viewMode, material }: Box3DProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf0f4ff);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    containerRef.current.appendChild(renderer.domElement);
-
-    const camera = new THREE.PerspectiveCamera(45, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1000);
-    camera.position.set(2, 2, 3);
-    camera.lookAt(0, 0, 0);
-
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.update();
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
-
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-    dirLight.position.set(4, 6, 4);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 1024;
-    dirLight.shadow.mapSize.height = 1024;
-    scene.add(dirLight);
-
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(5, 5),
-      new THREE.ShadowMaterial({ opacity: 0.35 })
-    );
-    floor.receiveShadow = true;
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -0.001;
-    scene.add(floor);
-
-    const sizeFactor = 0.02;
-    const w = Math.max(0.3, width * sizeFactor);
-    const h = Math.max(0.3, height * sizeFactor);
-    const d = Math.max(0.3, length * sizeFactor);
-    const thickness = Math.max(0.03, Math.min(w, h, d) * 0.08);
-
-    let color = 0x8b4513;
-    if (material.toLowerCase().includes("plywood")) color = 0x946f4a;
-    else if (material.toLowerCase().includes("cardboard") || material.toLowerCase().includes("corrugated")) color = 0xd4b26a;
-    else if (material.toLowerCase().includes("plastic")) color = 0x5f88c6;
-
-    const boxMaterial = new THREE.MeshStandardMaterial({
-      color,
-      roughness: 0.65,
-      metalness: 0.2,
-      side: THREE.DoubleSide,
-      flatShading: true,
-    });
-
-    const group = new THREE.Group();
-
-    const createWall = (w: number, h: number, d: number, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0) => {
-      const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), boxMaterial);
-      wall.castShadow = true;
-      wall.receiveShadow = true;
-      wall.position.set(x, y, z);
-      wall.rotation.set(rx, ry, rz);
-      return wall;
-    };
-
-    const bottom = createWall(w - thickness * 2, thickness, d - thickness * 2, 0, -h / 2 + thickness / 2, 0);
-    const front = createWall(w - thickness * 2, h - thickness, thickness, 0, 0, d / 2 - thickness / 2);
-    const back = createWall(w - thickness * 2, h - thickness, thickness, 0, 0, -d / 2 + thickness / 2);
-    const left = createWall(thickness, h - thickness, d - thickness * 2, -w / 2 + thickness / 2, 0, 0);
-    const right = createWall(thickness, h - thickness, d - thickness * 2, w / 2 - thickness / 2, 0, 0);
-    const top = createWall(w - thickness * 2, thickness, d - thickness * 2, 0, h / 2 - thickness / 2, 0);
-
-    group.add(bottom, front, back, left);
-
-    if (viewMode === "closed") {
-      group.add(right, top);
-    } else if (viewMode === "open-top") {
-      group.add(right);
-
-      const topPivot = new THREE.Group();
-      topPivot.position.set(0, h / 2 - thickness, -d / 2 + thickness / 2);
-      const lid = top.clone();
-      lid.position.set(0, 0, d / 2 - thickness / 2);
-      lid.rotation.set(0, 0, 0);
-      topPivot.add(lid);
-      topPivot.rotation.x = -Math.PI / 2;
-      group.add(topPivot);
-    } else if (viewMode === "open-side") {
-      group.add(top);
-
-      const rightPivot = new THREE.Group();
-      rightPivot.position.set(w / 2 - thickness, 0, 0);
-      const rightDoor = right.clone();
-      rightDoor.position.set(thickness / 2, 0, 0);
-      rightPivot.add(rightDoor);
-      rightPivot.rotation.y = -Math.PI / 2;
-      group.add(rightPivot);
-    }
-
-    scene.add(group);
-
-    const animate = () => {
-      controls.update();
-      renderer.render(scene, camera);
-      requestAnimationFrame(animate);
-    };
-
-    animate();
-
-    const handleResize = () => {
-      if (!containerRef.current) return;
-      camera.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      controls.dispose();
-      renderer.dispose();
-      scene.clear();
-      if (containerRef.current) containerRef.current.innerHTML = "";
-    };
-  }, [length, width, height, viewMode, material]);
-
-  return <div ref={containerRef} style={{ width: "100%", height: "420px", borderRadius: "12px", overflow: "hidden", boxShadow: "0 20px 40px rgba(0,0,0,0.15)" }} />;
-}
-
 function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
-  const [viewMode, setViewMode] = useState<"closed" | "open-top" | "open-side">("closed");
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
       <Navbar showBack currentPage={currentPage} setCurrentPage={setCurrentPage} />
@@ -1153,22 +1005,18 @@ function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
           <Card className="border-0 shadow-lg bg-white">
             <CardContent className="p-8">
               <div className="flex items-center space-x-2 mb-6"><Box className="w-5 h-5 text-purple-600" /><h3 className="font-semibold text-gray-900">3D Interactive Preview</h3></div>
-              <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-purple-100 rounded-lg p-6 min-h-[420px]">
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  <Button size="sm" variant={viewMode === "closed" ? "secondary" : "outline"} onClick={() => setViewMode("closed")}>Closed</Button>
-                  <Button size="sm" variant={viewMode === "open-top" ? "secondary" : "outline"} onClick={() => setViewMode("open-top")}>Open Top</Button>
-                  <Button size="sm" variant={viewMode === "open-side" ? "secondary" : "outline"} onClick={() => setViewMode("open-side")}>Open Side</Button>
+              <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-purple-100 rounded-lg p-12 flex flex-col items-center justify-center min-h-[400px]">
+                <div className="relative w-48 h-48 flex items-center justify-center mb-6">
+                  <div className="relative transform rotate-12">
+                    <div className="relative w-36 h-36">
+                      <div className="absolute inset-0 bg-gradient-to-br from-orange-300 to-orange-400 border-2 border-orange-500 rounded-lg shadow-2xl flex items-center justify-center"><div className="text-orange-700 text-center"><p className="text-sm font-bold">3D Box</p></div></div>
+                      <div className="absolute -top-9 left-9 w-36 h-18 bg-gradient-to-br from-orange-200 to-orange-300 border-2 border-orange-400 rounded-lg transform -skew-y-12 origin-bottom-left shadow-xl"></div>
+                      <div className="absolute top-9 -right-9 w-18 h-36 bg-gradient-to-br from-orange-400 to-orange-500 border-2 border-orange-600 rounded-lg transform skew-x-12 origin-top-left shadow-xl"></div>
+                    </div>
+                  </div>
                 </div>
-                <Box3D
-                  length={appData.dimensions.length}
-                  width={appData.dimensions.width}
-                  height={appData.dimensions.height}
-                  viewMode={viewMode}
-                  material={appData.packaging.type}
-                />
-                <p className="text-sm text-gray-700 mt-3 text-center">
-                  Drag inside the 3D viewport to orbit, scroll to zoom. Dimensions are shown by proportions: {appData.dimensions.width}×{appData.dimensions.length}×{appData.dimensions.height} cm.
-                </p>
+                <p className="text-sm text-gray-700 mb-3">Interactive 3D model</p>
+                <Button size="sm" variant="outline" className="border-gray-300 text-gray-700 bg-white hover:bg-gray-50"><RotateCcw className="w-3 h-3 mr-2" />Rotate View</Button>
               </div>
             </CardContent>
           </Card>
@@ -1263,8 +1111,8 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     const margin = 15;
     let y = 20;
 
-    // Header
-    pdf.setFillColor(22, 163, 74);
+    // ── Header ──
+    pdf.setFillColor(22, 163, 74); // green
     pdf.rect(0, 0, pageWidth, 30, "F");
     pdf.setTextColor(255, 255, 255);
     pdf.setFontSize(22);
@@ -1276,7 +1124,7 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
 
     y = 45;
 
-    // Quotation Info
+    // ── Quotation Info ──
     pdf.setTextColor(0, 0, 0);
     pdf.setFontSize(18);
     pdf.setFont("helvetica", "bold");
@@ -1290,7 +1138,7 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     y += 6;
     pdf.text(`Valid Until: ${new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toLocaleDateString()}`, pageWidth - margin, y, { align: "right" });
 
-    // Contact Info
+    // ── Contact Info ──
     y = 45;
     if (appData.companyDetails.name) { pdf.text(appData.companyDetails.name, margin, y); y += 6; }
     if (appData.companyDetails.address) { pdf.text(appData.companyDetails.address, margin, y); y += 6; }
@@ -1299,12 +1147,12 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
 
     y = 95;
 
-    // Divider
+    // ── Divider ──
     pdf.setDrawColor(200, 200, 200);
     pdf.line(margin, y, pageWidth - margin, y);
     y += 10;
 
-    // Object Info
+    // ── Object Info ──
     pdf.setFontSize(12);
     pdf.setFont("helvetica", "bold");
     pdf.text("Quotation For:", margin, y);
@@ -1312,12 +1160,12 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(10);
     pdf.text(`Object: ${appData.detectedObject}`, margin, y); y += 6;
-    pdf.text(`Dimensions: ${appData.dimensions.length} x ${appData.dimensions.width} x ${appData.dimensions.height} cm`, margin, y); y += 6;
+    pdf.text(`Dimensions: ${appData.dimensions.length} × ${appData.dimensions.width} × ${appData.dimensions.height} cm`, margin, y); y += 6;
     pdf.text(`Material: ${appData.packaging.type}`, margin, y); y += 6;
     pdf.text(`Quantity: ${quantity} units`, margin, y); y += 10;
 
-    // Table Header
-    pdf.setFillColor(254, 243, 199);
+    // ── Table Header ──
+    pdf.setFillColor(254, 243, 199); // amber
     pdf.rect(margin, y, pageWidth - margin * 2, 8, "F");
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(10);
@@ -1327,29 +1175,29 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     pdf.text("AMOUNT", 170, y + 5.5);
     y += 8;
 
-    // Table Row
+    // ── Table Row ──
     pdf.setFont("helvetica", "normal");
     pdf.rect(margin, y, pageWidth - margin * 2, 8);
     pdf.text(`${appData.packaging.type} Box`, margin + 2, y + 5.5);
     pdf.text(`${quantity}`, 120, y + 5.5);
-    pdf.text(`Rs. ${(materialsCost / quantity).toFixed(2)}`, 140, y + 5.5);
-    pdf.text(`Rs. ${materialsCost.toFixed(2)}`, 170, y + 5.5);
+    pdf.text(`₹ ${(materialsCost / quantity).toFixed(2)}`, 140, y + 5.5);
+    pdf.text(`₹ ${materialsCost.toFixed(2)}`, 170, y + 5.5);
     y += 20;
 
-    // Totals
+    // ── Totals ──
     const col = 140;
     pdf.setDrawColor(200, 200, 200);
     pdf.line(col, y, pageWidth - margin, y); y += 6;
-    pdf.text("Subtotal:", col, y); pdf.text(`Rs. ${subtotal.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
-    pdf.text(`Tax (${(taxRate * 100).toFixed(1)}%):`, col, y); pdf.text(`Rs. ${tax.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
-    pdf.text("Shipping:", col, y); pdf.text(`Rs. ${shipping.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text("Subtotal:", col, y); pdf.text(`₹ ${subtotal.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text(`Tax (${(taxRate * 100).toFixed(1)}%):`, col, y); pdf.text(`₹ ${tax.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text("Shipping:", col, y); pdf.text(`₹ ${shipping.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
     pdf.line(col, y, pageWidth - margin, y); y += 6;
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(12);
     pdf.setTextColor(22, 163, 74);
-    pdf.text("TOTAL:", col, y); pdf.text(`Rs. ${total.toFixed(2)}`, 185, y, { align: "right" });
+    pdf.text("TOTAL:", col, y); pdf.text(`₹ ${total.toFixed(2)}`, 185, y, { align: "right" });
 
-    // Footer
+    // ── Footer ──
     y += 20;
     pdf.setTextColor(0, 0, 0);
     pdf.setFontSize(10);
@@ -1363,10 +1211,7 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     topViewImage: null, sideViewImage: null, knownWidth: "",
     detectedObject: "Plastic Bottle", confidence: 94,
     dimensions: { length: 22.5, width: 7.8, height: 16.4, volume: 2876.4 },
-    materials: [
-      { name: "Cardboard", confidence: 72 },
-      { name: "Plastic", confidence: 28 }
-    ],
+    materials: { cardboard: 72, plastic: 28 },
     materialProperties: { category: "Consumer Goods", fragility: "Moderate" },
     estimatedWeight: 0.38, realWeight: "",
     packaging: { type: "Corrugated Cardboard Box", boxDimensions: "28 × 14 × 22 cm", cushioning: "Bubble Wrap + Edge Protectors" },
@@ -1557,10 +1402,7 @@ export default function App() {
     topViewImage: null, sideViewImage: null, knownWidth: "",
     detectedObject: "Plastic Bottle", confidence: 94,
     dimensions: { length: 22.5, width: 7.8, height: 16.4, volume: 2876.4 },
-    materials: [
-      { name: "Plastic", confidence: 72 },
-      { name: "Cardboard", confidence: 28 }
-    ],
+    materials: { cardboard: 72, plastic: 28 },
     materialProperties: { category: "Consumer Goods", fragility: "Moderate" },
     estimatedWeight: 0.38, realWeight: "",
     packaging: { type: "Corrugated Cardboard Box", boxDimensions: "28 × 14 × 22 cm", cushioning: "Bubble Wrap + Edge Protectors" },
