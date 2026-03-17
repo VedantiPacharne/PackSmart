@@ -426,10 +426,15 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
           height: data.real_dimensions?.height_cm ?? prev.dimensions.height,
           volume: data.real_dimensions?.volume_cm3 ?? prev.dimensions.volume,
         },
-        materials: data.material.materials || prev.materials,
+        // --- FIX IS HERE ---
+        materials: Object.entries(materialEntries).map(([name, confidence]) => ({
+          name: name.charAt(0).toUpperCase() + name.slice(1), 
+          confidence: confidence
+        })),
+        // -------------------
         materialProperties: {
-          category: data.material.object_category || "Unknown",
-          fragility: data.material.fragility || "Non-Fragile",
+          category: data.material?.object_category || "Unknown",
+          fragility: data.material?.fragility || "Non-Fragile",
         },
         estimatedWeight: data.weight ?? prev.estimatedWeight,
       }));
