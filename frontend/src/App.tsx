@@ -510,25 +510,38 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
       const result = await response.json();
       const data = result.data;
 
-      // Map backend response to appData
+      const materialEntries: Record<string, number> = {};
+      if (data.material?.materials && Array.isArray(data.material.materials)) {
+        data.material.materials.forEach((entry: { name: string; confidence: number }) => {
+          const key = entry.name.toLowerCase();
+          materialEntries[key] = Math.round(entry.confidence);
+        });
+      } else if (data.material?.material) {
+        materialEntries[data.material.material.toLowerCase()] = 100;
+      } else if (data.material?.materials && typeof data.material.materials === "object") {
+        Object.entries(data.material.materials).forEach(([name, confidence]) => {
+          materialEntries[name.toLowerCase()] = Number(confidence) || 0;
+        });
+      } else {
+        materialEntries["unknown"] = 100;
+      }
+
       setAppData(prev => ({
         ...prev,
         detectedObject: data.object_name || "Detected Object",
-        confidence: data.confidence || prev.confidence,
+        confidence: typeof data.confidence === "number" ? data.confidence : prev.confidence,
         dimensions: {
-          length: data.real_dimensions.length_cm,
-          width: data.real_dimensions.width_cm,
-          height: data.real_dimensions.height_cm,
-          volume: data.real_dimensions.volume_cm3,
+          length: data.real_dimensions?.length_cm ?? prev.dimensions.length,
+          width: data.real_dimensions?.width_cm ?? prev.dimensions.width,
+          height: data.real_dimensions?.height_cm ?? prev.dimensions.height,
+          volume: data.real_dimensions?.volume_cm3 ?? prev.dimensions.volume,
         },
-        materials: {
-          [data.material.material]: 100,
-        },
+        materials: Object.keys(materialEntries).length ? materialEntries : prev.materials,
         materialProperties: {
-          category: data.object_name || "Unknown",
-          fragility: "Moderate",
+          category: data.material?.object_category || data.object_name || "Unknown",
+          fragility: data.material?.fragility || "Moderate",
         },
-        estimatedWeight: data.weight,
+        estimatedWeight: data.weight ?? prev.estimatedWeight,
       }));
 
       setCurrentPage("detection");
