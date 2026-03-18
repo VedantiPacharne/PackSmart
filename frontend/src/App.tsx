@@ -105,10 +105,15 @@ type AppData = {
     unit: string;
     usage: string;
   }>;
+  bomFull: Array<{
+    material: string;
+    quantity: number;
+    unit: string;
+    description: string;
+    unit_price: number;
+    total_cost: number;
+  }>;
   pricing: {
-    materialCost: number;
-    packagingCost: number;
-    cushioningCost: number;
     totalCost: number;
     quotationId: string;
   };
@@ -400,22 +405,8 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
       const result = await response.json();
       const data = result.data;
 
-      const materialEntries: Record<string, number> = {};
-      if (data.material?.materials && Array.isArray(data.material.materials)) {
-        data.material.materials.forEach((entry: { name: string; confidence: number }) => {
-          const key = entry.name.toLowerCase();
-          materialEntries[key] = Math.round(entry.confidence);
-        });
-      } else if (data.material?.material) {
-        materialEntries[data.material.material.toLowerCase()] = 100;
-      } else if (data.material?.materials && typeof data.material.materials === "object") {
-        Object.entries(data.material.materials).forEach(([name, confidence]) => {
-          materialEntries[name.toLowerCase()] = Number(confidence) || 0;
-        });
-      } else {
-        materialEntries["unknown"] = 100;
-      }
-
+      // Map backend response to appData
+      const fullBomData = Array.isArray(data.bom) ? data.bom : [data.bom];
       setAppData(prev => ({
         ...prev,
         detectedObject: data.object_name || "Detected Object",
@@ -426,19 +417,30 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
           height: data.real_dimensions?.height_cm ?? prev.dimensions.height,
           volume: data.real_dimensions?.volume_cm3 ?? prev.dimensions.volume,
         },
-        // --- FIX IS HERE ---
-        materials: Object.entries(materialEntries).map(([name, confidence]) => ({
-          name: name.charAt(0).toUpperCase() + name.slice(1), 
-          confidence: confidence
-        })),
-        // -------------------
+        materials: data.material.materials,
         materialProperties: {
           category: data.material?.object_category || "Unknown",
           fragility: data.material?.fragility || "Non-Fragile",
         },
-        estimatedWeight: data.weight ?? prev.estimatedWeight,
+        estimatedWeight: data.weight,
+        packaging: {
+          type: data.packaging.packaging_material,
+          boxDimensions: data.packaging.box_dimensions,
+          cushioning: data.packaging.protection_layer,
+        },
+        bomFull: fullBomData,
+        bom: fullBomData.map((item: any) => ({
+          material: item.material,
+          quantity: item.quantity.toString(),
+          unit: item.unit,
+          usage: item.description,
+        })),
+        pricing: {
+          totalCost: data.grand_total,
+          quotationId: "PKS-2026-001",
+        },
       }));
-
+      
       setCurrentPage("detection");
     } catch (err: any) {
       setAnalysisError(err.message || "Could not connect to backend. Make sure it is running.");
@@ -1014,7 +1016,7 @@ function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
           <CardContent>
             <div className="bg-amber-50 rounded-lg p-6 border border-amber-200 mb-6">
               <p className="text-sm text-gray-700 mb-4">
-                Based on your object material ({Object.entries(appData.materials).map(([mat, val]) => `${mat.charAt(0).toUpperCase() + mat.slice(1)}: ${val}%`).join(", ")}), volume ({appData.dimensions.volume.toFixed(1)} cm³), and weight ({appData.estimatedWeight} kg), the system recommends:
+                Based on your object material, volume, and weight, the system recommends:
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                 <div className="bg-white rounded-lg p-4 border border-amber-300"><p className="text-xs text-gray-600 mb-1">Packaging Material</p><p className="font-bold text-orange-600">{appData.packaging.type}</p></div>
@@ -1082,7 +1084,7 @@ function BOMPage({ appData, currentPage, setCurrentPage }: PageProps) {
         <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm mb-8">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2"><FileText className="w-5 h-5 text-green-600" /><span>Materials List</span></CardTitle>
-            <p className="text-sm text-gray-600 mt-2">Generated for {appData.packaging.type} box with dimensions {appData.dimensions.length} × {appData.dimensions.width} × {appData.dimensions.height} cm</p>
+            <p className="text-sm text-gray-600 mt-2">Generated for {appData.packaging.type} with dimensions {appData.packaging.boxDimensions}</p>
           </CardHeader>
           <CardContent className="p-8">
             <Table>
@@ -1128,12 +1130,8 @@ function BOMPage({ appData, currentPage, setCurrentPage }: PageProps) {
 }
 
 function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageProps) {
-  const quantity = 100;
-  const materialsCost = 213.0;
-  const manufacturingCost = 45.0;
-  const qualityControl = 12.0;
-  const designSetup = 25.0;
-  const subtotal = materialsCost + manufacturingCost + qualityControl + designSetup;
+  
+  let subtotal = appData.pricing.totalCost;
   const taxRate = 0.085;
   const tax = subtotal * taxRate;
   const shipping = 15.0;
@@ -1195,9 +1193,7 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(10);
     pdf.text(`Object: ${appData.detectedObject}`, margin, y); y += 6;
-    pdf.text(`Dimensions: ${appData.dimensions.length} × ${appData.dimensions.width} × ${appData.dimensions.height} cm`, margin, y); y += 6;
-    pdf.text(`Material: ${appData.packaging.type}`, margin, y); y += 6;
-    pdf.text(`Quantity: ${quantity} units`, margin, y); y += 10;
+    pdf.text(`Dimensions: ${appData.packaging.boxDimensions}`, margin, y); y += 6;
 
     // ── Table Header ──
     pdf.setFillColor(254, 243, 199); // amber
@@ -1205,32 +1201,54 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(10);
     pdf.text("DESCRIPTION", margin + 2, y + 5.5);
-    pdf.text("QTY", 120, y + 5.5);
+    pdf.text("QTY", 100, y + 5.5);
     pdf.text("UNIT PRICE", 140, y + 5.5);
     pdf.text("AMOUNT", 170, y + 5.5);
     y += 8;
 
-    // ── Table Row ──
+    // ── Table Rows (BOM Data) ──
     pdf.setFont("helvetica", "normal");
-    pdf.rect(margin, y, pageWidth - margin * 2, 8);
-    pdf.text(`${appData.packaging.type} Box`, margin + 2, y + 5.5);
-    pdf.text(`${quantity}`, 120, y + 5.5);
-    pdf.text(`₹ ${(materialsCost / quantity).toFixed(2)}`, 140, y + 5.5);
-    pdf.text(`₹ ${materialsCost.toFixed(2)}`, 170, y + 5.5);
-    y += 20;
+    pdf.setFontSize(10);
+
+    if (appData.bomFull && appData.bomFull.length > 0) {
+      appData.bomFull.forEach((item) => {
+        // Row box
+        pdf.rect(margin, y, pageWidth - margin * 2, 8);
+
+        // Columns
+        pdf.text(item.material, margin + 2, y + 5.5);
+        pdf.text(`${item.quantity} ${item.unit}`, 100, y + 5.5);
+        pdf.text(`Rs ${item.unit_price.toFixed(2)}`, 140, y + 5.5);
+        pdf.text(`Rs ${item.total_cost.toFixed(2)}`, 170, y + 5.5);
+
+        y += 8;
+
+        // ⚠️ Page break handling
+        if (y > 270) {
+          pdf.addPage();
+          y = 20;
+        }
+      });
+    } else {
+      pdf.text("No BOM data available", margin, y);
+      y += 8;
+    }
+
+    // spacing after table
+    y += 15;
 
     // ── Totals ──
     const col = 140;
     pdf.setDrawColor(200, 200, 200);
     pdf.line(col, y, pageWidth - margin, y); y += 6;
-    pdf.text("Subtotal:", col, y); pdf.text(`₹ ${subtotal.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
-    pdf.text(`Tax (${(taxRate * 100).toFixed(1)}%):`, col, y); pdf.text(`₹ ${tax.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
-    pdf.text("Shipping:", col, y); pdf.text(`₹ ${shipping.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text("Subtotal:", col, y); pdf.text(`Rs ${subtotal.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text(`Tax (${(taxRate * 100).toFixed(1)}%):`, col, y); pdf.text(`Rs ${tax.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
+    pdf.text("Shipping:", col, y); pdf.text(`Rs ${shipping.toFixed(2)}`, 185, y, { align: "right" }); y += 6;
     pdf.line(col, y, pageWidth - margin, y); y += 6;
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(12);
     pdf.setTextColor(22, 163, 74);
-    pdf.text("TOTAL:", col, y); pdf.text(`₹ ${total.toFixed(2)}`, 185, y, { align: "right" });
+    pdf.text("TOTAL:", col, y); pdf.text(`Rs ${total.toFixed(2)}`, 185, y, { align: "right" });
 
     // ── Footer ──
     y += 20;
@@ -1259,7 +1277,13 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
       { material: "Bubble Wrap", quantity: "1.2", unit: "meters", usage: "Inner Protection" },
       { material: "Packing Tape", quantity: "1", unit: "roll", usage: "Sealing" },
     ],
-    pricing: { materialCost: 45.5, packagingCost: 28.0, cushioningCost: 12.5, totalCost: 86.0, quotationId: "PKS-2026-001" },
+    bomFull: [
+      { material: "Corrugated Sheet", quantity: 0.8, unit: "sq.m", description: "Box Material", unit_price: 50, total_cost: 40 },
+      { material: "Thermocol Padding", quantity: 2, unit: "pieces", description: "Cushioning", unit_price: 15, total_cost: 30 },
+      { material: "Bubble Wrap", quantity: 1.2, unit: "meters", description: "Inner Protection", unit_price: 25, total_cost: 30 },
+      { material: "Packing Tape", quantity: 1, unit: "roll", description: "Sealing", unit_price: 10, total_cost: 10 },
+    ],
+    pricing: {totalCost: 86.0, quotationId: "PKS-2026-001" },
     companyDetails: { companyName: "", companyTagline: "", name: "", address: "", phone: "", email: "" },
   };
 
@@ -1305,47 +1329,43 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
               <h3 className="font-bold text-gray-900 mb-3">Quotation For:</h3>
               <div className="text-sm text-gray-700 space-y-1">
                 <p className="font-semibold">{appData.detectedObject} Packaging</p>
-                <p>Dimensions: {appData.dimensions.length} × {appData.dimensions.width} × {appData.dimensions.height} cm</p>
+                <p>Dimensions: {appData.packaging.boxDimensions} </p>
                 <p>Material: {appData.packaging.type}</p>
-                <p>Quantity: {quantity} units</p>
               </div>
             </div>
             <div className="mb-6 overflow-x-auto">
               <table className="w-full border border-gray-300 text-sm">
                 <thead className="bg-amber-50">
                   <tr>
+                     <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700">MATERIAL</th>
                     <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700">QUANTITY</th>
-                    <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700">DESCRIPTION</th>
                     <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700">UNIT PRICE</th>
-                    <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-gray-700">TAXABLE?</th>
-                    <th className="border border-gray-300 px-3 py-2 text-right font-semibold text-gray-700">AMOUNT</th>
+                    <th className="border border-gray-300 px-3 py-2 text-center font-semibold  text-gray-700">TOTAL COST</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white">
-                  <tr>
-                    <td className="border border-gray-300 px-3 py-3 text-gray-900 font-medium">{quantity}</td>
-                    <td className="border border-gray-300 px-3 py-3 text-gray-900">{appData.packaging.type} - {appData.dimensions.length}×{appData.dimensions.width}×{appData.dimensions.height}cm</td>
-                    <td className="border border-gray-300 px-3 py-3 text-gray-900">₹ {(materialsCost / quantity).toFixed(2)}</td>
-                    <td className="border border-gray-300 px-3 py-3 text-center text-gray-900">T</td>
-                    <td className="border border-gray-300 px-3 py-3 text-right text-gray-900 font-medium">₹ {materialsCost.toFixed(2)}</td>
-                  </tr>
-                  {[...Array(3)].map((_, i) => (
-                    <tr key={i}>
-                      <td className="border border-gray-300 px-3 py-6"></td>
-                      <td className="border border-gray-300 px-3 py-6"></td>
-                      <td className="border border-gray-300 px-3 py-6"></td>
-                      <td className="border border-gray-300 px-3 py-6"></td>
-                      <td className="border border-gray-300 px-3 py-6"></td>
+                  {appData.bomFull && appData.bomFull.length > 0 ? (
+                    appData.bomFull.map((item, index) => (
+                      <tr key={index}>
+                        <td className="border border-gray-300 px-3 py-3 text-gray-900 font-medium">{item.material}</td>
+                        <td className="border border-gray-300 px-3 py-3 text-gray-900">{item.quantity} {item.unit}</td>
+                        <td className="border border-gray-300 px-3 py-3 text-gray-900">₹ {item.unit_price.toFixed(2)}</td>
+                        <td className="border border-gray-300 px-3 py-3 text-right text-gray-900 font-medium">₹ {item.total_cost.toFixed(2)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="border border-gray-300 px-3 py-3 text-center text-gray-500">No BOM data available</td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
             <div className="flex justify-end mb-8">
               <div className="w-full md:w-1/2 bg-amber-50 border border-gray-300 rounded-lg">
                 <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">SUBTOTAL</span><span className="font-semibold text-gray-900">₹ {subtotal.toFixed(2)}</span></div>
-                <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">TAX RATE</span><span className="font-semibold text-gray-900">{(taxRate * 100).toFixed(2)}%</span></div>
-                <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">SALES TAX</span><span className="font-semibold text-gray-900">{tax.toFixed(2)}</span></div>
+                <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">TAX (8.5%)</span><span className="font-semibold text-gray-900">{tax.toFixed(2)}</span></div>
+                <div className="flex justify-between px-4 py-3 border-b border-gray-300"><span className="font-semibold text-gray-700">SHIPPING</span><span className="font-semibold text-gray-900">{shipping.toFixed(2)}</span></div>
                 <div className="flex justify-between px-4 py-4 bg-white rounded-b-lg"><span className="text-xl font-bold text-gray-900">TOTAL</span><span className="text-xl font-bold text-green-600">₹ {total.toFixed(2)}</span></div>
               </div>
             </div>
@@ -1453,7 +1473,13 @@ export default function App() {
       { material: "Bubble Wrap", quantity: "1.2", unit: "meters", usage: "Inner Protection" },
       { material: "Packing Tape", quantity: "1", unit: "roll", usage: "Sealing" },
     ],
-    pricing: { materialCost: 45.5, packagingCost: 28.0, cushioningCost: 12.5, totalCost: 86.0, quotationId: "PKS-2026-001" },
+    bomFull: [
+      { material: "Corrugated Sheet", quantity: 0.8, unit: "sq.m", description: "Box Material", unit_price: 50, total_cost: 40 },
+      { material: "Thermocol Padding", quantity: 2, unit: "pieces", description: "Cushioning", unit_price: 15, total_cost: 30 },
+      { material: "Bubble Wrap", quantity: 1.2, unit: "meters", description: "Inner Protection", unit_price: 25, total_cost: 30 },
+      { material: "Packing Tape", quantity: 1, unit: "roll", description: "Sealing", unit_price: 10, total_cost: 10 },
+    ],
+    pricing: { totalCost: 86.0, quotationId: "PKS-2026-001" },
     companyDetails: { companyName: "", companyTagline: "", name: "", address: "", phone: "", email: "" },
   });
 

@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 *.pyo
+/backend/__pycache__/config.cpython-312.pyc
 
 # Node
 node_modules/

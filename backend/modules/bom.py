@@ -66,7 +66,7 @@ def generate_bom(packaging_material,
     # ------------------ 4 PANEL BOX ------------------
     elif packaging_material == "4 panel Cardboard Box":
 
-        qty = surface_area + (width * length)
+        qty = round((surface_area + (width * length)), 2)
 
         add_item("Corrugated Cardboard (4 Panel)",
                  qty,
@@ -81,7 +81,7 @@ def generate_bom(packaging_material,
     # ------------------ SINGLE PANEL BOX ------------------
     elif packaging_material == "Single Panel Cardboard Box":
 
-        qty = surface_area + (width * length) + 2
+        qty = round((surface_area + (width * length) + 2), 2)
 
         add_item("Corrugated Cardboard (Single Panel)",
                  qty,
@@ -117,5 +117,15 @@ def generate_bom(packaging_material,
 
     return {
         "bom": bom,
-        "grand_total": grand_total
+        "grand_total": grand_total,
+        # expose selected inputs and derived metrics for callers
+        "packaging_material": packaging_material,
+        "protection_layer": protection_layer,
+        "dimensions": {
+            "length_cm": length,
+            "width_cm": width,
+            "height_cm": height
+        },
+        "surface_area_sqm": surface_area_sqm,
+        "edge_length_m": edge_length_m
     }
