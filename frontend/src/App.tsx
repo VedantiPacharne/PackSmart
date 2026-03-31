@@ -360,7 +360,7 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
               <ul className="space-y-3 text-sm text-gray-400">
                 <li className="flex items-center space-x-2"><Mail className="w-4 h-4" /><a href="mailto:hello@packsmart.ai" className="hover:text-white transition-colors">hello@packsmart.ai</a></li>
                 <li className="flex items-center space-x-2"><Linkedin className="w-4 h-4" /><a href="#" className="hover:text-white transition-colors">LinkedIn</a></li>
-                <li className="flex items-center space-x-2"><MapPin className="w-4 h-4" /><span>San Francisco, CA</span></li>
+                <li className="flex items-center space-x-2"><MapPin className="w-4 h-4" /><span>Pune, India</span></li>
               </ul>
             </div>
           </div>
