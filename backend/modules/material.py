@@ -11,6 +11,7 @@ def get_model_path():
     # Go up 3 levels from backend/modules to root
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     return os.path.join(base_dir, "models", "efficientnetb4_best_model.pth")
+    return os.path.join(base_dir, "models", "efficientnetb4_best_model.pth")
 
 MODEL_PATH = get_model_path()
 
@@ -72,7 +73,7 @@ def load_material_model():
     if _model_material is None:
 
         # Load class names
-        _class_names = ['Aluminium', 'Brass', 'Copper', 'Iron', 'Steel', 'Ceramic', 'Glass', 'Paper', 'Plastic', 'Wood']
+        _class_names = ['Ceramic', 'Glass','Metal', 'Paper', 'Plastic', 'Wood']
 
         num_classes = len(_class_names)
 
