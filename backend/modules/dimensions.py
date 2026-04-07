@@ -23,12 +23,10 @@ def get_real_dimensions(
 
     # volume
     volume_cm3 = real_width_cm * real_height_cm * real_length_cm
-    volume_m3 = volume_cm3 / 1e6
 
     return {
         "length_cm": round(real_length_cm, 2),
         "width_cm": round(real_width_cm, 2),
         "height_cm": round(real_height_cm, 2),
         "volume_cm3": round(volume_cm3, 2),
-        "volume_m3": round(volume_m3, 6)
     }

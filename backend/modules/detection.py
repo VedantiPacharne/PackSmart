@@ -13,7 +13,7 @@ def load_model(model_path=None):
         if model_path is None:
             # Go up 3 levels from backend/modules to root
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            model_path = os.path.join(base_dir, "models", "best.pt")
+            model_path = os.path.join(base_dir, "models", "first.pt")
         _model = YOLO(model_path)
     return _model
 
@@ -122,18 +122,18 @@ def detect_top_object(image_path, save_dir="outputs"):
     width_top_px = int(w)
     height_top_px = int(h)
 
-    # visualization image
-    annotated = img.copy()
-    cv2.rectangle(annotated, (x, y), (x+w, y+h), (255, 0, 0), 2)
-    cv2.putText(annotated, "Top Detection", (x, y-10),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,0,0), 2)
+    # # visualization image
+    # annotated = img.copy()
+    # cv2.rectangle(annotated, (x, y), (x+w, y+h), (255, 0, 0), 2)
+    # cv2.putText(annotated, "Top Detection", (x, y-10),
+    #             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,0,0), 2)
 
-    # ensure folder exists
-    os.makedirs(save_dir, exist_ok=True)
+    # # ensure folder exists
+    # os.makedirs(save_dir, exist_ok=True)
 
-    uid = str(uuid.uuid4())
-    bbox_path = os.path.join(save_dir, f"{uid}_top_bbox.jpg")
-    cv2.imwrite(bbox_path, annotated)
+    # uid = str(uuid.uuid4())
+    # bbox_path = os.path.join(save_dir, f"{uid}_top_bbox.jpg")
+    # cv2.imwrite(bbox_path, annotated)
 
     return {
         "width_top_px": width_top_px,

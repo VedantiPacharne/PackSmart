@@ -11,7 +11,6 @@ def get_model_path():
     # Go up 3 levels from backend/modules to root
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     return os.path.join(base_dir, "models", "efficientnetb4_best_model.pth")
-    return os.path.join(base_dir, "models", "efficientnetb4_best_model.pth")
 
 MODEL_PATH = get_model_path()
 
@@ -36,9 +35,6 @@ def get_fragility(materials_list):
     return "Non-Fragile"
 
 # Get Object Category
-
-import json
-import os
 
 def get_object_category(object_name, json_path=None):
     """
@@ -73,7 +69,7 @@ def load_material_model():
     if _model_material is None:
 
         # Load class names
-        _class_names = ['Ceramic', 'Glass','Metal', 'Paper', 'Plastic', 'Wood']
+        _class_names = [ "Aluminum", "Brass", "Copper", "Iron", "Steel", "Ceramic", "Glass", "Paper", "Plastic", "Wood"]
 
         num_classes = len(_class_names)
 
@@ -143,12 +139,18 @@ def predict_material(image_path, object_name):
     # Get indices of top 2 probabilities
     top_indices = np.argsort(probs)[::-1][:2]
 
+    MATERIAL_CONFIDENCE_THRESHOLD = 90.0
+
     top_materials = []
     for idx in top_indices:
         top_materials.append({
             "name": _class_names[idx],
             "confidence": round(float(probs[idx] * 100), 2)
         })
+
+    # If the top prediction is highly confident, drop the second
+    if top_materials[0]["confidence"] >= MATERIAL_CONFIDENCE_THRESHOLD:
+        top_materials = top_materials[:1]
 
      # 🔹 Fragility
     fragility = get_fragility(top_materials)
