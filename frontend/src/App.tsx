@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-// import * as THREE from "three";
-// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import {
   Package,
   Upload,
@@ -57,6 +55,7 @@ import PackSmart3D, { BoxType } from "./components/PackSmart3D";
 
 type Page =
   | "landing"
+  | "about"
   | "capture"
   | "camera"
   | "detection"
@@ -75,7 +74,7 @@ type CameraViewType = "top" | "front";
 type AppData = {
   topViewImage: ImageData | null;
   frontViewImage: ImageData | null;
-  annotatedImageUrl: string | null; 
+  annotatedImageUrl: string | null;
   knownWidth: string;
   detectedObject: string;
   confidence: number;
@@ -147,6 +146,7 @@ type PageProps = {
 
 const pageStepsMap: Record<Page, number> = {
   landing: 0,
+  about: 0,
   capture: 1,
   camera: 1,
   detection: 2,
@@ -206,9 +206,10 @@ function Navbar({ showBack, currentPage, setCurrentPage }: { showBack?: boolean;
               onClick={() => {
                 const backMap: Record<Page, Page> = {
                   landing: "landing",
+                  about: "landing",
                   capture: "landing",
                   camera: "capture",
-                  detection: "capture",    // ← goes to capture, skipping camera
+                  detection: "capture",
                   materials: "detection",
                   packaging: "materials",
                   bom: "packaging",
@@ -233,10 +234,24 @@ function Navbar({ showBack, currentPage, setCurrentPage }: { showBack?: boolean;
           )}
           {!showBack && (
             <div className="hidden md:flex items-center space-x-8">
-              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">Workflow</button>
-              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">Technology</button>
-              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">Modules</button>
-              <button className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">About</button>
+              <button
+                onClick={() => document.getElementById("technology-section")?.scrollIntoView({ behavior: "smooth" })}
+                className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium"
+              >
+                Technology
+              </button>
+              <button
+                onClick={() => document.getElementById("modules-section")?.scrollIntoView({ behavior: "smooth" })}
+                className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium"
+              >
+                Modules
+              </button>
+              <button
+                onClick={() => setCurrentPage("about")}
+                className="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium"
+              >
+                About
+              </button>
             </div>
           )}
         </div>
@@ -244,6 +259,8 @@ function Navbar({ showBack, currentPage, setCurrentPage }: { showBack?: boolean;
     </nav>
   );
 }
+
+// ─── Landing Page ─────────────────────────────────────────────────────────────
 
 function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
   const modules = [
@@ -258,6 +275,8 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
       <Navbar currentPage="landing" setCurrentPage={setCurrentPage} />
+
+      {/* Hero Section */}
       <section className="pt-20 pb-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -272,14 +291,24 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
                 Capture product images, estimate real-world dimensions, identify materials, and generate optimized packaging solutions — instantly.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Button size="lg" onClick={() => setCurrentPage("capture")} className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl hover:shadow-2xl transition-all">
+                <Button
+                  size="lg"
+                  onClick={() => setCurrentPage("capture")}
+                  className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl hover:shadow-2xl transition-all"
+                >
                   Get Started <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
-                <Button size="lg" variant="outline" className="border-2 border-gray-300 hover:border-blue-500 px-8 py-6 rounded-xl">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => document.getElementById("modules-section")?.scrollIntoView({ behavior: "smooth" })}
+                  className="border-2 border-gray-300 hover:border-blue-500 px-8 py-6 rounded-xl"
+                >
                   <Play className="w-4 h-4 mr-2" /> View Workflow
                 </Button>
               </div>
             </motion.div>
+
             <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="relative">
               <div className="relative bg-gradient-to-br from-blue-500/10 via-teal-500/10 to-cyan-500/10 rounded-3xl p-12 backdrop-blur-sm border border-white/50 shadow-2xl">
                 <div className="relative">
@@ -317,6 +346,7 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
         </div>
       </section>
 
+      {/* Modules Section */}
       <section id="modules-section" className="py-20 px-6 bg-white/50">
         <div className="max-w-7xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
@@ -341,6 +371,7 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
         </div>
       </section>
 
+      {/* Footer */}
       <footer className="bg-gray-900 text-white py-16 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
@@ -354,12 +385,11 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
             <div>
               <h3 className="font-semibold mb-4 text-white">Product</h3>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><button className="hover:text-white transition-colors">Workflow</button></li>
                 <li><button className="hover:text-white transition-colors">Modules</button></li>
                 <li><button className="hover:text-white transition-colors">Pricing</button></li>
               </ul>
             </div>
-            <div>
+            <div id="technology-section">
               <h3 className="font-semibold mb-4 text-white">Technology</h3>
               <ul className="space-y-2 text-sm text-gray-400">
                 <li><button className="hover:text-white transition-colors">Computer Vision</button></li>
@@ -384,6 +414,147 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
     </div>
   );
 }
+
+// ─── About Page ───────────────────────────────────────────────────────────────
+
+function AboutPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
+  const team = [
+    { name: "Student Name 1", role: "Computer Vision & Backend" },
+    { name: "Student Name 2", role: "Frontend & UI/UX" },
+    { name: "Student Name 3", role: "ML & Material Classification" },
+    { name: "Student Name 4", role: "Integration & Testing" },
+  ];
+
+  const steps = [
+    { step: 1, icon: Camera, title: "Capture Images", desc: "Upload or capture a front-view and top-view photo of your product. Use a plain background for best results.", color: "from-blue-500 to-blue-600" },
+    { step: 2, icon: Scan, title: "Enter Known Width", desc: "Measure one real dimension of the object (e.g. its width in cm) and enter it. This calibrates all other measurements.", color: "from-teal-500 to-teal-600" },
+    { step: 3, icon: Eye, title: "Run AI Detection", desc: "Click 'Run Detection'. The AI detects the object, draws a bounding box, and calculates L × W × H and volume.", color: "from-cyan-500 to-cyan-600" },
+    { step: 4, icon: Layers, title: "Review Materials", desc: "The system identifies material composition (e.g. plastic, cardboard) and estimates or accepts a real weight.", color: "from-violet-500 to-violet-600" },
+    { step: 5, icon: Box, title: "Get Packaging Recommendation", desc: "View the recommended box type, dimensions, and cushioning. Explore the 2D dieline and interactive 3D preview.", color: "from-orange-500 to-orange-600" },
+    { step: 6, icon: DollarSign, title: "Download Quotation", desc: "Review the Bill of Materials and pricing. Add your company details and download a professional PDF quotation.", color: "from-green-500 to-green-600" },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
+      <Navbar showBack currentPage="about" setCurrentPage={setCurrentPage} />
+
+      {/* Hero */}
+      <section className="py-20 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-teal-600 rounded-2xl flex items-center justify-center shadow-xl mx-auto mb-6">
+              <Package className="w-9 h-9 text-white" />
+            </div>
+            <h1 className="text-5xl font-bold text-gray-900 mb-4">About PACKSMART</h1>
+            <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
+              A final-year engineering project that combines computer vision, deep learning, and packaging engineering to automate smart packaging decisions.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Mission & Vision */}
+      <section className="py-12 px-6 bg-white/60">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+          <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
+            <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white h-full">
+              <CardContent className="p-8">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4">
+                  <Eye className="w-6 h-6 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold mb-4">Our Mission</h2>
+                <p className="text-blue-100 leading-relaxed">
+                  To eliminate guesswork in packaging by providing AI-powered, vision-calibrated recommendations — reducing material waste, cost, and delivery damage for businesses of all sizes.
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
+            <Card className="border-0 shadow-xl bg-gradient-to-br from-teal-500 to-teal-600 text-white h-full">
+              <CardContent className="p-8">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4">
+                  <Scan className="w-6 h-6 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold mb-4">Our Vision</h2>
+                <p className="text-teal-100 leading-relaxed">
+                  A world where every product ships in the perfectly-sized, right-material package — determined in seconds by a camera and AI, not hours of manual measurement and estimation.
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* How to Use — Manual */}
+      <section className="py-16 px-6">
+        <div className="max-w-4xl mx-auto">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">How to Use PACKSMART</h2>
+            <p className="text-gray-600">Follow these 6 steps to get a complete packaging quotation</p>
+          </motion.div>
+          <div className="space-y-4">
+            {steps.map((item, i) => (
+              <motion.div key={item.step} initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
+                <Card className="border-0 shadow-md bg-white/90 hover:shadow-lg transition-shadow">
+                  <CardContent className="p-5 flex items-start space-x-5">
+                    <div className={`w-12 h-12 bg-gradient-to-br ${item.color} rounded-xl flex items-center justify-center flex-shrink-0 shadow-md`}>
+                      <item.icon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Step {item.step}</span>
+                      </div>
+                      <h3 className="font-semibold text-gray-900 mb-1">{item.title}</h3>
+                      <p className="text-sm text-gray-600 leading-relaxed">{item.desc}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Team */}
+      <section className="py-16 px-6 bg-white/60">
+        <div className="max-w-5xl mx-auto">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">Meet the Team</h2>
+            <p className="text-gray-600">Final Year B.E. Students — Pune, India</p>
+          </motion.div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {team.map((member, i) => (
+              <motion.div key={member.name} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+                <Card className="border-0 shadow-lg bg-white text-center hover:shadow-xl transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-md">
+                      <span className="text-2xl font-bold text-white">{member.name.charAt(0)}</span>
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-1">{member.name}</h3>
+                    <p className="text-xs text-gray-500">{member.role}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-16 px-6 text-center">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to Try It?</h2>
+          <p className="text-gray-600 mb-8">Upload your product images and get a packaging solution in under a minute.</p>
+          <Button size="lg" onClick={() => setCurrentPage("capture")} className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-10 py-6 rounded-xl shadow-xl">
+            Get Started <ArrowRight className="w-5 h-5 ml-2" />
+          </Button>
+        </motion.div>
+      </section>
+    </div>
+  );
+}
+
+// ─── Capture Page ─────────────────────────────────────────────────────────────
 
 function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCamera }: PageProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -417,11 +588,10 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
       const result = await response.json();
       const data = result.data;
 
-      // Map backend response to appData
       const fullBomData = Array.isArray(data.bom) ? data.bom : [data.bom];
       setAppData(prev => ({
         ...prev,
-        annotatedImageUrl: data.bbox_image_path? `http://localhost:8000/outputs/${data.bbox_image_path.split(/[\\/]/).pop()}` : null,
+        annotatedImageUrl: data.bbox_image_path ? `http://localhost:8000/outputs/${data.bbox_image_path.split(/[\\/]/).pop()}` : null,
         detectedObject: data.object_name || "Detected Object",
         confidence: data.object_confidence ?? prev.confidence,
         dimensions: {
@@ -437,9 +607,9 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
         },
         estimatedWeight: data.estimated_weight,
         _materialData: data.material,
-        _realDimensions: data.real_dimensions
+        _realDimensions: data.real_dimensions,
       }));
-      
+
       setCurrentPage("detection");
     } catch (err: any) {
       setAnalysisError(err.message || "Could not connect to backend. Make sure it is running.");
@@ -491,7 +661,7 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
             </CardContent>
           </Card>
 
-          {/* Front View Card */}
+          {/* Top View Card */}
           <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2"><Camera className="w-5 h-5 text-blue-600" /><span>Top View Image</span></CardTitle>
@@ -578,7 +748,8 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
   );
 }
 
-// ─── Real Camera Page ──────────────────────────────────────────────────────────
+// ─── Camera Page ──────────────────────────────────────────────────────────────
+
 function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedImage, setCapturedImage, handleUseImage, setAppData, appData }: PageProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -590,7 +761,6 @@ function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedIm
   const viewLabel = currentCameraView === "front" ? "Front View" : "Top View";
 
   const startCamera = useCallback(async (facing: "environment" | "user") => {
-    // Stop any existing stream
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -633,12 +803,10 @@ function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedIm
     }
   }, []);
 
-  // Start camera when component mounts
   useEffect(() => {
     if (!capturedImage) {
       startCamera(facingMode);
     }
-    // Cleanup: stop camera when leaving this page
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
@@ -647,14 +815,12 @@ function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedIm
     };
   }, []);
 
-  // Switch camera (front/back)
   const handleSwitchCamera = () => {
     const newFacing = facingMode === "environment" ? "user" : "environment";
     setFacingMode(newFacing);
     startCamera(newFacing);
   };
 
-  // Take a photo from the video stream
   const handleCapture = () => {
     if (!videoRef.current || !canvasRef.current) return;
 
@@ -666,7 +832,6 @@ function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedIm
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Mirror if using front camera
     if (facingMode === "user") {
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
@@ -676,7 +841,6 @@ function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedIm
     const imageDataUrl = canvas.toDataURL("image/jpeg", 0.92);
     setCapturedImage(imageDataUrl);
 
-    // Stop the stream after capturing
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -698,13 +862,11 @@ function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedIm
 
   return (
     <div className="fixed inset-0 bg-black z-50">
-      {/* Hidden canvas for capturing */}
       <canvas ref={canvasRef} className="hidden" />
 
       <div className="relative h-full w-full">
         {!capturedImage ? (
           <>
-            {/* Live video feed */}
             {!cameraError && (
               <video
                 ref={videoRef}
@@ -716,7 +878,6 @@ function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedIm
               />
             )}
 
-            {/* Loading state */}
             {isLoading && !cameraError && (
               <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
                 <div className="text-center text-white">
@@ -726,7 +887,6 @@ function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedIm
               </div>
             )}
 
-            {/* Error state */}
             {cameraError && (
               <div className="absolute inset-0 bg-gray-900 flex items-center justify-center p-8">
                 <div className="text-center text-white max-w-sm">
@@ -742,7 +902,6 @@ function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedIm
               </div>
             )}
 
-            {/* Overlay: corner guides */}
             {!cameraError && !isLoading && (
               <div className="absolute inset-0 flex items-center justify-center p-8 pointer-events-none">
                 <div className="relative w-full max-w-2xl aspect-[4/3]">
@@ -759,12 +918,10 @@ function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedIm
               </div>
             )}
 
-            {/* Top bar: close button */}
             <div className="absolute top-0 left-0 right-0 flex justify-between items-center p-4">
               <Button size="sm" variant="ghost" onClick={handleCancel} className="text-white hover:bg-white/20 rounded-full w-10 h-10 p-0">
                 <X className="w-5 h-5" />
               </Button>
-              {/* Switch camera button (only if no error) */}
               {!cameraError && (
                 <Button size="sm" variant="ghost" onClick={handleSwitchCamera} className="text-white hover:bg-white/20 rounded-full w-10 h-10 p-0" title="Switch camera">
                   <SwitchCamera className="w-5 h-5" />
@@ -772,14 +929,12 @@ function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedIm
               )}
             </div>
 
-            {/* Bottom bar: capture button */}
             {!cameraError && !isLoading && (
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-8">
                 <div className="flex justify-center items-center space-x-6">
                   <p className="text-white/70 text-xs absolute bottom-24 left-1/2 -translate-x-1/2 whitespace-nowrap">
                     Position object within the frame
                   </p>
-                  {/* Shutter button */}
                   <button
                     onClick={handleCapture}
                     className="w-20 h-20 rounded-full bg-white border-4 border-white/50 shadow-2xl hover:scale-95 active:scale-90 transition-transform flex items-center justify-center"
@@ -791,7 +946,6 @@ function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedIm
             )}
           </>
         ) : (
-          /* Preview captured image */
           <div className="absolute inset-0 bg-black flex flex-col items-center justify-center p-8">
             <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-2xl">
               <div className="relative">
@@ -817,6 +971,8 @@ function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedIm
   );
 }
 
+// ─── Detection Page ───────────────────────────────────────────────────────────
+
 function DetectionPage({ appData, currentPage, setCurrentPage }: PageProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
@@ -824,33 +980,61 @@ function DetectionPage({ appData, currentPage, setCurrentPage }: PageProps) {
       <ProgressIndicator currentStep={pageStepsMap[currentPage]} totalSteps={6} />
       <div className="max-w-6xl mx-auto px-6 py-12">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
-          <Badge className="mb-4 bg-green-100 text-green-700 border-0"><Scan className="w-3 h-3 mr-1" />Step 2 of 6</Badge>
+          <Badge className="mb-4 bg-green-100 text-green-700 border-0">
+            <Scan className="w-3 h-3 mr-1" />Step 2 of 6
+          </Badge>
           <h1 className="text-4xl font-bold text-gray-900 mb-3">Object Detection & Dimensions</h1>
           <p className="text-lg text-gray-600">AI has analyzed your object and calculated real-world dimensions</p>
         </motion.div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
-            <CardHeader><CardTitle className="flex items-center space-x-2"><Scan className="w-5 h-5 text-green-600" /><span>Object Detection Results</span></CardTitle></CardHeader>
-            <CardContent>
-              <div className="relative mb-6">
-                {appData.annotatedImageUrl ? (
+
+          {/* LEFT CARD — image fills full card height */}
+          <Card
+            className="border-0 shadow-xl bg-white/90 backdrop-blur-sm flex flex-col"
+            style={{ width: "550px", height: "660px" }}
+          >
+            <CardHeader className="flex-shrink-0">
+              <CardTitle className="flex items-center space-x-2">
+                <Scan className="w-5 h-5 text-green-600" />
+                <span>Object Detection Results</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 pb-6 px-6 overflow-hidden">
+              {appData.annotatedImageUrl ? (
                 <img
                   src={appData.annotatedImageUrl}
                   alt="Annotated detection"
-                  className="w-full h-64 object-cover rounded-xl"
+                  className="w-full h-full object-cover rounded-xl"
                 />
-                ) : appData.frontViewImage?.url ? (
+              ) : appData.frontViewImage?.url ? (
                 <ImageWithFallback
                   src={appData.frontViewImage.url}
                   alt="Detected object"
-                  className="w-full h-64 object-cover rounded-xl"
+                  className="w-full h-full object-cover rounded-xl"
                 />
-                ) : (
-                <div className="w-full h-64 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500">
+              ) : (
+                <div className="w-full h-full rounded-xl bg-gray-100 flex items-center justify-center text-gray-500">
                   No image available.
                 </div>
-                )}
-              </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* RIGHT CARD — green detected box on top, then dimensions */}
+          <Card
+            className="border-0 shadow-xl bg-white/90 backdrop-blur-sm flex flex-col"
+            style={{ width: "550px", height: "660px" }}
+          >
+            <CardHeader className="flex-shrink-0">
+              <CardTitle className="flex items-center space-x-2">
+                <Ruler className="w-5 h-5 text-blue-600" />
+                <span>Calculated Dimensions</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 space-y-4 overflow-auto px-6 pb-6">
+
+              {/* GREEN DETECTED OBJECT BOX */}
               <div className="bg-gradient-to-br from-green-50 to-teal-50 rounded-xl p-6 border border-green-200">
                 <Label className="text-sm text-gray-600 mb-2 block">Detected Object:</Label>
                 <p className="text-3xl font-bold text-gray-900 mb-4">{appData.detectedObject}</p>
@@ -861,32 +1045,62 @@ function DetectionPage({ appData, currentPage, setCurrentPage }: PageProps) {
                 </div>
                 <Progress value={appData.confidence} className="h-3" />
               </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
-            <CardHeader><CardTitle className="flex items-center space-x-2"><Ruler className="w-5 h-5 text-blue-600" /><span>Calculated Dimensions</span></CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-4"><p className="text-sm opacity-90 mb-1">Length</p><p className="text-3xl font-bold">{appData.dimensions.length}</p><p className="text-xs opacity-80">centimeters</p></div>
-                <div className="bg-gradient-to-br from-teal-500 to-teal-600 text-white rounded-xl p-4"><p className="text-sm opacity-90 mb-1">Width</p><p className="text-3xl font-bold">{appData.dimensions.width}</p><p className="text-xs opacity-80">centimeters</p></div>
-                <div className="bg-gradient-to-br from-cyan-500 to-cyan-600 text-white rounded-xl p-4"><p className="text-sm opacity-90 mb-1">Height</p><p className="text-3xl font-bold">{appData.dimensions.height}</p><p className="text-xs opacity-80">centimeters</p></div>
-                <div className="bg-gradient-to-br from-violet-500 to-violet-600 text-white rounded-xl p-4"><p className="text-sm opacity-90 mb-1">Volume</p><p className="text-3xl font-bold">{appData.dimensions.volume.toFixed(1)}</p><p className="text-xs opacity-80">cubic cm</p></div>
+
+              {/* DIMENSION BOXES */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-4">
+                  <p className="text-sm opacity-90 mb-1">Length</p>
+                  <p className="text-3xl font-bold">{appData.dimensions.length}</p>
+                  <p className="text-xs opacity-80">centimeters</p>
+                </div>
+                <div className="bg-gradient-to-br from-teal-500 to-teal-600 text-white rounded-xl p-4">
+                  <p className="text-sm opacity-90 mb-1">Width</p>
+                  <p className="text-3xl font-bold">{appData.dimensions.width}</p>
+                  <p className="text-xs opacity-80">centimeters</p>
+                </div>
+                <div className="bg-gradient-to-br from-cyan-500 to-cyan-600 text-white rounded-xl p-4">
+                  <p className="text-sm opacity-90 mb-1">Height</p>
+                  <p className="text-3xl font-bold">{appData.dimensions.height}</p>
+                  <p className="text-xs opacity-80">centimeters</p>
+                </div>
+                <div className="bg-gradient-to-br from-violet-500 to-violet-600 text-white rounded-xl p-4">
+                  <p className="text-sm opacity-90 mb-1">Volume</p>
+                  <p className="text-3xl font-bold">{appData.dimensions.volume.toFixed(1)}</p>
+                  <p className="text-xs opacity-80">cubic cm</p>
+                </div>
               </div>
+
+              {/* INFO BOX */}
               <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <div className="flex items-start space-x-3"><Eye className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" /><p className="text-sm text-gray-700">Dimensions calculated using computer vision and calibrated with your known reference measurement.</p></div>
+                <div className="flex items-start space-x-3">
+                  <Eye className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-gray-700">
+                    Dimensions calculated using computer vision and calibrated with your known reference measurement.
+                  </p>
+                </div>
               </div>
+
             </CardContent>
           </Card>
+
         </div>
+
         <div className="text-center">
-          <Button size="lg" onClick={() => setCurrentPage("materials")} className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl">
+          <Button
+            size="lg"
+            onClick={() => setCurrentPage("materials")}
+            className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl"
+          >
             Proceed to Material Identification <ChevronRight className="w-5 h-5 ml-2" />
           </Button>
         </div>
+
       </div>
     </div>
   );
 }
+
+// ─── Materials Page ───────────────────────────────────────────────────────────
 
 function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: PageProps) {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -896,10 +1110,10 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
     setIsGenerating(true);
     setGenerationError(null);
     const weightInKg = appData.realWeight
-    ? appData.weightUnit === "g"
-      ? parseFloat(appData.realWeight) / 1000   // g → kg
-      : parseFloat(appData.realWeight)           // already kg
-    : null;
+      ? appData.weightUnit === "g"
+        ? parseFloat(appData.realWeight) / 1000
+        : parseFloat(appData.realWeight)
+      : null;
 
     try {
       const response = await fetch("http://localhost:8000/api/packaging", {
@@ -944,7 +1158,6 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
       }));
 
       setCurrentPage("packaging");
-
     } catch (err: any) {
       setGenerationError(err.message || "Could not connect to backend.");
     } finally {
@@ -1038,33 +1251,22 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
               <Label htmlFor="real-weight" className="text-base font-semibold text-gray-900 mb-4 block text-center">
                 Enter Real Weight (Optional)
               </Label>
-
-              {/* Unit Toggle */}
               <div className="flex justify-center mb-4">
                 <div className="flex bg-gray-100 rounded-xl p-1">
                   <button
                     onClick={() => setAppData(prev => ({ ...prev, weightUnit: "kg" }))}
-                    className={`px-6 py-2 rounded-lg text-sm font-semibold transition-all ${
-                      appData.weightUnit === "kg"
-                        ? "bg-white shadow text-blue-600"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
+                    className={`px-6 py-2 rounded-lg text-sm font-semibold transition-all ${appData.weightUnit === "kg" ? "bg-white shadow text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
                   >
                     kg
                   </button>
                   <button
                     onClick={() => setAppData(prev => ({ ...prev, weightUnit: "g" }))}
-                    className={`px-6 py-2 rounded-lg text-sm font-semibold transition-all ${
-                      appData.weightUnit === "g"
-                        ? "bg-white shadow text-blue-600"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
+                    className={`px-6 py-2 rounded-lg text-sm font-semibold transition-all ${appData.weightUnit === "g" ? "bg-white shadow text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
                   >
                     g
                   </button>
                 </div>
               </div>
-
               <input
                 id="real-weight"
                 type="number"
@@ -1084,7 +1286,6 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
           </Card>
         </div>
 
-        {/* Error message */}
         {generationError && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl px-6 py-4 text-sm text-center">
             ⚠️ {generationError}
@@ -1115,6 +1316,8 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
     </div>
   );
 }
+
+// ─── Packaging Page ───────────────────────────────────────────────────────────
 
 function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
   const currentBoxType: BoxType = (() => {
@@ -1156,11 +1359,7 @@ function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
             <CardContent className="p-8">
               <div className="flex items-center space-x-2 mb-6"><FileText className="w-5 h-5 text-blue-600" /><h3 className="font-semibold text-gray-900">2D Flat Layout</h3></div>
               <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-6 flex flex-col items-center justify-center min-h-[440px]">
-                <BoxDieline
-                  length={appData.dimensions.length}
-                  width={appData.dimensions.width}
-                  height={appData.dimensions.height}
-                />
+                <BoxDieline length={appData.dimensions.length} width={appData.dimensions.width} height={appData.dimensions.height} />
                 <p className="text-sm text-gray-600 mt-4">Scaled 2D box dieline — fold on dashed lines, cut on solid lines</p>
               </div>
             </CardContent>
@@ -1170,7 +1369,7 @@ function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
             <CardContent className="p-8">
               <div className="flex items-center space-x-2 mb-6"><Box className="w-5 h-5 text-purple-600" /><h3 className="font-semibold text-gray-900">3D Interactive Preview</h3></div>
               <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-purple-100 rounded-lg p-4 min-h-[459px]">
-                  <PackSmart3D
+                <PackSmart3D
                   length={appData.dimensions.length}
                   breadth={appData.dimensions.width}
                   height={appData.dimensions.height}
@@ -1191,6 +1390,8 @@ function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
     </div>
   );
 }
+
+// ─── BOM Page ─────────────────────────────────────────────────────────────────
 
 function BOMPage({ appData, currentPage, setCurrentPage }: PageProps) {
   return (
@@ -1252,8 +1453,9 @@ function BOMPage({ appData, currentPage, setCurrentPage }: PageProps) {
   );
 }
 
+// ─── Pricing Page ─────────────────────────────────────────────────────────────
+
 function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageProps) {
-  
   let subtotal = appData.pricing.totalCost;
   const taxRate = 0.085;
   const tax = subtotal * taxRate;
@@ -1267,8 +1469,7 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     const margin = 15;
     let y = 20;
 
-    // ── Header ──
-    pdf.setFillColor(22, 163, 74); // green
+    pdf.setFillColor(22, 163, 74);
     pdf.rect(0, 0, pageWidth, 30, "F");
     pdf.setTextColor(255, 255, 255);
     pdf.setFontSize(22);
@@ -1280,7 +1481,6 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
 
     y = 45;
 
-    // ── Quotation Info ──
     pdf.setTextColor(0, 0, 0);
     pdf.setFontSize(18);
     pdf.setFont("helvetica", "bold");
@@ -1294,7 +1494,6 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     y += 6;
     pdf.text(`Valid Until: ${new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toLocaleDateString()}`, pageWidth - margin, y, { align: "right" });
 
-    // ── Contact Info ──
     y = 45;
     if (appData.companyDetails.name) { pdf.text(appData.companyDetails.name, margin, y); y += 6; }
     if (appData.companyDetails.address) { pdf.text(appData.companyDetails.address, margin, y); y += 6; }
@@ -1302,13 +1501,10 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     if (appData.companyDetails.email) { pdf.text(`Email: ${appData.companyDetails.email}`, margin, y); y += 6; }
 
     y = 95;
-
-    // ── Divider ──
     pdf.setDrawColor(200, 200, 200);
     pdf.line(margin, y, pageWidth - margin, y);
     y += 10;
 
-    // ── Object Info ──
     pdf.setFontSize(12);
     pdf.setFont("helvetica", "bold");
     pdf.text("Quotation For:", margin, y);
@@ -1318,8 +1514,7 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     pdf.text(`Object: ${appData.detectedObject}`, margin, y); y += 6;
     pdf.text(`Dimensions: ${appData.packaging.boxDimensions}`, margin, y); y += 6;
 
-    // ── Table Header ──
-    pdf.setFillColor(254, 243, 199); // amber
+    pdf.setFillColor(254, 243, 199);
     pdf.rect(margin, y, pageWidth - margin * 2, 8, "F");
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(10);
@@ -1329,38 +1524,25 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     pdf.text("AMOUNT", 170, y + 5.5);
     y += 8;
 
-    // ── Table Rows (BOM Data) ──
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(10);
 
     if (appData.bomFull && appData.bomFull.length > 0) {
       appData.bomFull.forEach((item) => {
-        // Row box
         pdf.rect(margin, y, pageWidth - margin * 2, 8);
-
-        // Columns
         pdf.text(item.material, margin + 2, y + 5.5);
         pdf.text(`${item.quantity} ${item.unit}`, 100, y + 5.5);
         pdf.text(`Rs ${item.unit_price.toFixed(2)}`, 140, y + 5.5);
         pdf.text(`Rs ${item.total_cost.toFixed(2)}`, 170, y + 5.5);
-
         y += 8;
-
-        // ⚠️ Page break handling
-        if (y > 270) {
-          pdf.addPage();
-          y = 20;
-        }
+        if (y > 270) { pdf.addPage(); y = 20; }
       });
     } else {
       pdf.text("No BOM data available", margin, y);
       y += 8;
     }
 
-    // spacing after table
     y += 15;
-
-    // ── Totals ──
     const col = 140;
     pdf.setDrawColor(200, 200, 200);
     pdf.line(col, y, pageWidth - margin, y); y += 6;
@@ -1373,7 +1555,6 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     pdf.setTextColor(22, 163, 74);
     pdf.text("TOTAL:", col, y); pdf.text(`Rs ${total.toFixed(2)}`, 185, y, { align: "right" });
 
-    // ── Footer ──
     y += 20;
     pdf.setTextColor(0, 0, 0);
     pdf.setFontSize(10);
@@ -1390,10 +1571,10 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
     dimensions: { length: 22.5, width: 7.8, height: 16.4, volume: 2876.4 },
     materials: [
       { name: "Cardboard", confidence: 72 },
-      { name: "Plastic", confidence: 28 }
+      { name: "Plastic", confidence: 28 },
     ],
     materialProperties: { category: "Consumer Goods", fragility: "Moderate" },
-    estimatedWeight: 0.38, realWeight: "",weightUnit: "kg",
+    estimatedWeight: 0.38, realWeight: "", weightUnit: "kg",
     _materialData: null,
     _realDimensions: null,
     packaging: { type: "Corrugated Cardboard Box", boxDimensions: "28 × 14 × 22 cm", cushioning: "Bubble Wrap + Edge Protectors" },
@@ -1409,7 +1590,7 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
       { material: "Bubble Wrap", quantity: 1.2, unit: "meters", description: "Inner Protection", unit_price: 25, total_cost: 30 },
       { material: "Packing Tape", quantity: 1, unit: "roll", description: "Sealing", unit_price: 10, total_cost: 10 },
     ],
-    pricing: {totalCost: 86.0, quotationId: "PKS-2026-001" },
+    pricing: { totalCost: 86.0, quotationId: "PKS-2026-001" },
     companyDetails: { companyName: "", companyTagline: "", name: "", address: "", phone: "", email: "" },
   };
 
@@ -1455,7 +1636,7 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
               <h3 className="font-bold text-gray-900 mb-3">Quotation For:</h3>
               <div className="text-sm text-gray-700 space-y-1">
                 <p className="font-semibold">{appData.detectedObject} Packaging</p>
-                <p>Dimensions: {appData.packaging.boxDimensions} </p>
+                <p>Dimensions: {appData.packaging.boxDimensions}</p>
                 <p>Material: {appData.packaging.type}</p>
               </div>
             </div>
@@ -1463,10 +1644,10 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
               <table className="w-full border border-gray-300 text-sm">
                 <thead className="bg-amber-50">
                   <tr>
-                     <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700">MATERIAL</th>
+                    <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700">MATERIAL</th>
                     <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700">QUANTITY</th>
                     <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700">UNIT PRICE</th>
-                    <th className="border border-gray-300 px-3 py-2 text-center font-semibold  text-gray-700">TOTAL COST</th>
+                    <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-gray-700">TOTAL COST</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white">
@@ -1589,10 +1770,10 @@ export default function App() {
     dimensions: { length: 22.5, width: 7.8, height: 16.4, volume: 2876.4 },
     materials: [
       { name: "Plastic", confidence: 72 },
-      { name: "Cardboard", confidence: 28 }
+      { name: "Cardboard", confidence: 28 },
     ],
     materialProperties: { category: "Consumer Goods", fragility: "Moderate" },
-    estimatedWeight: 0.38, realWeight: "",weightUnit: "kg",
+    estimatedWeight: 0.38, realWeight: "", weightUnit: "kg",
     _materialData: null,
     _realDimensions: null,
     packaging: { type: "Corrugated Cardboard Box", boxDimensions: "28 × 14 × 22 cm", cushioning: "Bubble Wrap + Edge Protectors" },
@@ -1618,12 +1799,10 @@ export default function App() {
     setCurrentPage("camera");
   };
 
-  // handleCapture is now handled inside CameraPage via getUserMedia
   const handleCapture = () => {};
 
   const handleUseImage = () => {
     if (capturedImage) {
-      // Convert dataURL to a File object
       fetch(capturedImage)
         .then(res => res.blob())
         .then(blob => {
@@ -1657,6 +1836,7 @@ export default function App() {
   return (
     <div>
       {currentPage === "landing" && <LandingPage {...pageProps} />}
+      {currentPage === "about" && <AboutPage setCurrentPage={setCurrentPage} />}
       {currentPage === "capture" && <CapturePage {...pageProps} />}
       {currentPage === "camera" && <CameraPage {...pageProps} />}
       {currentPage === "detection" && <DetectionPage {...pageProps} />}
