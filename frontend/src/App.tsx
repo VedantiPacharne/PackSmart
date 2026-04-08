@@ -70,11 +70,12 @@ type ImageData = {
   file: File | null;
 };
 
-type CameraViewType = "top" | "side";
+type CameraViewType = "top" | "front";
 
 type AppData = {
   topViewImage: ImageData | null;
-  sideViewImage: ImageData | null;
+  frontViewImage: ImageData | null;
+  annotatedImageUrl: string | null; 
   knownWidth: string;
   detectedObject: string;
   confidence: number;
@@ -93,7 +94,10 @@ type AppData = {
     fragility: string;
   };
   estimatedWeight: number;
+  _materialData: any | null;
+  _realDimensions: any | null;
   realWeight: string;
+  weightUnit: "kg" | "g";
   packaging: {
     type: string;
     boxDimensions: string;
@@ -138,7 +142,7 @@ type PageProps = {
   setCapturedImage: (img: string | null) => void;
   handleCapture: () => void;
   handleUseImage: () => void;
-  handleImageUpload: (file: File, type: "top" | "side") => void;
+  handleImageUpload: (file: File, type: "front" | "top") => void;
 };
 
 const pageStepsMap: Record<Page, number> = {
@@ -200,9 +204,17 @@ function Navbar({ showBack, currentPage, setCurrentPage }: { showBack?: boolean;
             <Button
               variant="ghost"
               onClick={() => {
-                const pages: Page[] = ["landing", "capture", "camera", "detection", "materials", "packaging", "bom", "pricing"];
-                const currentIndex = pages.indexOf(currentPage);
-                if (currentIndex > 0) setCurrentPage(pages[currentIndex - 1]);
+                const backMap: Record<Page, Page> = {
+                  landing: "landing",
+                  capture: "landing",
+                  camera: "capture",
+                  detection: "capture",    // ← goes to capture, skipping camera
+                  materials: "detection",
+                  packaging: "materials",
+                  bom: "packaging",
+                  pricing: "bom",
+                };
+                setCurrentPage(backMap[currentPage]);
               }}
               className="hover:bg-gray-100"
             >
@@ -235,7 +247,7 @@ function Navbar({ showBack, currentPage, setCurrentPage }: { showBack?: boolean;
 
 function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
   const modules = [
-    { icon: Camera, title: "Image Capture", description: "Capture top and side images of the object.", color: "from-blue-500 to-blue-600" },
+    { icon: Camera, title: "Image Capture", description: "Capture front and top images of the object.", color: "from-blue-500 to-blue-600" },
     { icon: Scan, title: "Object Detection & Dimension Estimation", description: "AI detects the object and calculates physical dimensions and volume.", color: "from-teal-500 to-teal-600" },
     { icon: Layers, title: "Material Classification", description: "Identifies material composition using deep learning.", color: "from-violet-500 to-violet-600" },
     { icon: Box, title: "Packaging Recommendation", description: "Generates optimized box size and material suggestions.", color: "from-orange-500 to-orange-600" },
@@ -378,7 +390,7 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const runDetection = async () => {
-    if (!appData.topViewImage?.file || !appData.sideViewImage?.file || !appData.knownWidth) {
+    if (!appData.frontViewImage?.file || !appData.topViewImage?.file || !appData.knownWidth) {
       alert("Please upload both images and enter the known width");
       return;
     }
@@ -388,8 +400,8 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
 
     try {
       const formData = new FormData();
+      formData.append("front_image", appData.frontViewImage.file);
       formData.append("top_image", appData.topViewImage.file);
-      formData.append("front_image", appData.sideViewImage.file);
       formData.append("real_width_cm", appData.knownWidth);
 
       const response = await fetch("http://localhost:8000/api/analyze", {
@@ -409,8 +421,9 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
       const fullBomData = Array.isArray(data.bom) ? data.bom : [data.bom];
       setAppData(prev => ({
         ...prev,
+        annotatedImageUrl: data.bbox_image_path? `http://localhost:8000/outputs/${data.bbox_image_path.split(/[\\/]/).pop()}` : null,
         detectedObject: data.object_name || "Detected Object",
-        confidence: typeof data.confidence === "number" ? data.confidence : prev.confidence,
+        confidence: data.object_confidence ?? prev.confidence,
         dimensions: {
           length: data.real_dimensions?.length_cm ?? prev.dimensions.length,
           width: data.real_dimensions?.width_cm ?? prev.dimensions.width,
@@ -422,23 +435,9 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
           category: data.material?.object_category || "Unknown",
           fragility: data.material?.fragility || "Non-Fragile",
         },
-        estimatedWeight: data.weight,
-        packaging: {
-          type: data.packaging.packaging_material,
-          boxDimensions: data.packaging.box_dimensions,
-          cushioning: data.packaging.protection_layer,
-        },
-        bomFull: fullBomData,
-        bom: fullBomData.map((item: any) => ({
-          material: item.material,
-          quantity: item.quantity.toString(),
-          unit: item.unit,
-          usage: item.description,
-        })),
-        pricing: {
-          totalCost: data.grand_total,
-          quotationId: "PKS-2026-001",
-        },
+        estimatedWeight: data.estimated_weight,
+        _materialData: data.material,
+        _realDimensions: data.real_dimensions
       }));
       
       setCurrentPage("detection");
@@ -462,7 +461,37 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Top View Card */}
+          {/* Front View Card */}
+          <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2"><Camera className="w-5 h-5 text-blue-600" /><span>Front View Image</span></CardTitle>
+            </CardHeader>
+            <CardContent>
+              {appData.frontViewImage ? (
+                <div className="relative group">
+                  <ImageWithFallback src={appData.frontViewImage.url} alt="Front view" className="w-full h-64 object-cover rounded-xl" />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => openCamera("front")} className="bg-white hover:bg-gray-100"><Camera className="w-4 h-4 mr-1" />Re-capture</Button>
+                    <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const url = URL.createObjectURL(file); setAppData(prev => ({ ...prev, frontViewImage: { url, file } })); } }; input.click(); }} className="bg-white hover:bg-gray-100"><Upload className="w-4 h-4 mr-1" />Re-upload</Button>
+                  </div>
+                  <Badge className="absolute top-3 left-3 bg-green-500 border-0"><Check className="w-3 h-3 mr-1" />Uploaded</Badge>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 bg-gradient-to-br from-blue-50 to-teal-50 hover:border-blue-400 transition-colors">
+                  <div className="text-center">
+                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-sm font-medium text-gray-700 mb-4">Drag & drop or click to upload</p>
+                    <div className="flex flex-col gap-2">
+                      <Button size="sm" onClick={() => openCamera("front")} className="bg-gradient-to-r from-blue-600 to-teal-600 text-white hover:from-blue-700 hover:to-teal-700"><Camera className="w-4 h-4 mr-2" />Capture Image</Button>
+                      <Button size="sm" variant="outline" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const url = URL.createObjectURL(file); setAppData(prev => ({ ...prev, frontViewImage: { url, file } })); } }; input.click(); }}><Upload className="w-4 h-4 mr-2" />Upload Image</Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Front View Card */}
           <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2"><Camera className="w-5 h-5 text-blue-600" /><span>Top View Image</span></CardTitle>
@@ -485,36 +514,6 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
                     <div className="flex flex-col gap-2">
                       <Button size="sm" onClick={() => openCamera("top")} className="bg-gradient-to-r from-blue-600 to-teal-600 text-white hover:from-blue-700 hover:to-teal-700"><Camera className="w-4 h-4 mr-2" />Capture Image</Button>
                       <Button size="sm" variant="outline" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const url = URL.createObjectURL(file); setAppData(prev => ({ ...prev, topViewImage: { url, file } })); } }; input.click(); }}><Upload className="w-4 h-4 mr-2" />Upload Image</Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Side View Card */}
-          <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2"><Camera className="w-5 h-5 text-blue-600" /><span>Side View Image</span></CardTitle>
-            </CardHeader>
-            <CardContent>
-              {appData.sideViewImage ? (
-                <div className="relative group">
-                  <ImageWithFallback src={appData.sideViewImage.url} alt="Side view" className="w-full h-64 object-cover rounded-xl" />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openCamera("side")} className="bg-white hover:bg-gray-100"><Camera className="w-4 h-4 mr-1" />Re-capture</Button>
-                    <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const url = URL.createObjectURL(file); setAppData(prev => ({ ...prev, sideViewImage: { url, file } })); } }; input.click(); }} className="bg-white hover:bg-gray-100"><Upload className="w-4 h-4 mr-1" />Re-upload</Button>
-                  </div>
-                  <Badge className="absolute top-3 left-3 bg-green-500 border-0"><Check className="w-3 h-3 mr-1" />Uploaded</Badge>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 bg-gradient-to-br from-blue-50 to-teal-50 hover:border-blue-400 transition-colors">
-                  <div className="text-center">
-                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-sm font-medium text-gray-700 mb-4">Drag & drop or click to upload</p>
-                    <div className="flex flex-col gap-2">
-                      <Button size="sm" onClick={() => openCamera("side")} className="bg-gradient-to-r from-blue-600 to-teal-600 text-white hover:from-blue-700 hover:to-teal-700"><Camera className="w-4 h-4 mr-2" />Capture Image</Button>
-                      <Button size="sm" variant="outline" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const url = URL.createObjectURL(file); setAppData(prev => ({ ...prev, sideViewImage: { url, file } })); } }; input.click(); }}><Upload className="w-4 h-4 mr-2" />Upload Image</Button>
                     </div>
                   </div>
                 </div>
@@ -558,7 +557,7 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
           <Button
             size="lg"
             onClick={runDetection}
-            disabled={!appData.topViewImage || !appData.sideViewImage || !appData.knownWidth || isAnalyzing}
+            disabled={!appData.frontViewImage || !appData.topViewImage || !appData.knownWidth || isAnalyzing}
             className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl disabled:opacity-50"
           >
             {isAnalyzing ? (
@@ -588,7 +587,7 @@ function CameraPage({ currentPage, setCurrentPage, currentCameraView, capturedIm
   const [isLoading, setIsLoading] = useState(true);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
 
-  const viewLabel = currentCameraView === "top" ? "Top View" : "Side View";
+  const viewLabel = currentCameraView === "front" ? "Front View" : "Top View";
 
   const startCamera = useCallback(async (facing: "environment" | "user") => {
     // Stop any existing stream
@@ -834,24 +833,23 @@ function DetectionPage({ appData, currentPage, setCurrentPage }: PageProps) {
             <CardHeader><CardTitle className="flex items-center space-x-2"><Scan className="w-5 h-5 text-green-600" /><span>Object Detection Results</span></CardTitle></CardHeader>
             <CardContent>
               <div className="relative mb-6">
-                {(appData.sideViewImage || appData.topViewImage) ? (
-                  <ImageWithFallback
-                    src={appData.sideViewImage?.url ?? appData.topViewImage?.url ?? ""}
-                    alt="Detected object"
-                    className="w-full h-64 object-cover rounded-xl"
-                  />
+                {appData.annotatedImageUrl ? (
+                <img
+                  src={appData.annotatedImageUrl}
+                  alt="Annotated detection"
+                  className="w-full h-64 object-cover rounded-xl"
+                />
+                ) : appData.frontViewImage?.url ? (
+                <ImageWithFallback
+                  src={appData.frontViewImage.url}
+                  alt="Detected object"
+                  className="w-full h-64 object-cover rounded-xl"
+                />
                 ) : (
-                  <div className="w-full h-64 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500">
-                    No side/top view image available.
-                  </div>
-                )}
-                <div className="absolute inset-8 border-4 border-green-500 rounded-lg">
-                  <div className="absolute -top-3 -left-3 w-6 h-6 bg-green-500 rounded-full"></div>
-                  <div className="absolute -top-3 -right-3 w-6 h-6 bg-green-500 rounded-full"></div>
-                  <div className="absolute -bottom-3 -left-3 w-6 h-6 bg-green-500 rounded-full"></div>
-                  <div className="absolute -bottom-3 -right-3 w-6 h-6 bg-green-500 rounded-full"></div>
+                <div className="w-full h-64 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500">
+                  No image available.
                 </div>
-                <Badge className="absolute top-4 left-4 bg-green-500 border-0 text-white shadow-lg z-10 px-3 py-1.5 text-sm font-semibold"><Check className="w-4 h-4 mr-1.5" />Analysis Complete</Badge>
+                )}
               </div>
               <div className="bg-gradient-to-br from-green-50 to-teal-50 rounded-xl p-6 border border-green-200">
                 <Label className="text-sm text-gray-600 mb-2 block">Detected Object:</Label>
@@ -891,6 +889,69 @@ function DetectionPage({ appData, currentPage, setCurrentPage }: PageProps) {
 }
 
 function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: PageProps) {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+
+  const handleGeneratePackaging = async () => {
+    setIsGenerating(true);
+    setGenerationError(null);
+    const weightInKg = appData.realWeight
+    ? appData.weightUnit === "g"
+      ? parseFloat(appData.realWeight) / 1000   // g → kg
+      : parseFloat(appData.realWeight)           // already kg
+    : null;
+
+    try {
+      const response = await fetch("http://localhost:8000/api/packaging", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          material_data: appData._materialData,
+          real_dimensions: appData._realDimensions,
+          estimated_weight: appData.estimatedWeight,
+          real_weight: weightInKg,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || "Backend error");
+      }
+
+      const result = await response.json();
+      const data = result.data;
+
+      const fullBomData = Array.isArray(data.bom) ? data.bom : [data.bom];
+
+      setAppData(prev => ({
+        ...prev,
+        packaging: {
+          type: data.packaging.packaging_material,
+          boxDimensions: data.packaging.box_dimensions,
+          cushioning: data.packaging.protection_layer,
+        },
+        bomFull: fullBomData,
+        bom: fullBomData.map((item: any) => ({
+          material: item.material,
+          quantity: item.quantity.toString(),
+          unit: item.unit,
+          usage: item.description,
+        })),
+        pricing: {
+          totalCost: data.grand_total,
+          quotationId: "PKS-2026-001",
+        },
+      }));
+
+      setCurrentPage("packaging");
+
+    } catch (err: any) {
+      setGenerationError(err.message || "Could not connect to backend.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
       <Navbar showBack currentPage={currentPage} setCurrentPage={setCurrentPage} />
@@ -936,7 +997,7 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
                 </div>
               </div>
               <div className="space-y-3">
-                <Label className="text-sm font-semibold text-gray-700">Fragility Level</Label>
+                <Label className="text-sm font-semibold text-gray-700">Fragility</Label>
                 <div className="w-full px-4 py-4 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl">
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-semibold text-gray-900">{appData.materialProperties.fragility}</span>
@@ -954,39 +1015,101 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
               <Weight className="w-12 h-12 mx-auto mb-4 opacity-80" />
               <p className="text-lg font-medium mb-2 opacity-90">Estimated Weight (AI Predicted)</p>
               <div className="flex items-end justify-center space-x-2 mb-2">
-                <span className="text-6xl font-bold">{appData.estimatedWeight}</span>
-                <span className="text-2xl mb-3 opacity-80">kg</span>
+                <span className="text-6xl font-bold">
+                  {appData.estimatedWeight < 1
+                    ? +(appData.estimatedWeight * 1000).toFixed(2)
+                    : appData.estimatedWeight}
+                </span>
+                <span className="text-2xl mb-3 opacity-80">
+                  {appData.estimatedWeight < 1 ? "g" : "kg"}
+                </span>
               </div>
               <p className="text-sm opacity-80">Based on material density analysis</p>
             </CardContent>
           </Card>
+
           <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
             <CardContent className="p-8">
               <div className="flex items-center justify-center mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-teal-600 rounded-xl flex items-center justify-center"><Ruler className="w-6 h-6 text-white" /></div>
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-teal-600 rounded-xl flex items-center justify-center">
+                  <Ruler className="w-6 h-6 text-white" />
+                </div>
               </div>
-              <Label htmlFor="real-weight" className="text-base font-semibold text-gray-900 mb-4 block text-center">Enter Real Weight (Optional)</Label>
+              <Label htmlFor="real-weight" className="text-base font-semibold text-gray-900 mb-4 block text-center">
+                Enter Real Weight (Optional)
+              </Label>
+
+              {/* Unit Toggle */}
+              <div className="flex justify-center mb-4">
+                <div className="flex bg-gray-100 rounded-xl p-1">
+                  <button
+                    onClick={() => setAppData(prev => ({ ...prev, weightUnit: "kg" }))}
+                    className={`px-6 py-2 rounded-lg text-sm font-semibold transition-all ${
+                      appData.weightUnit === "kg"
+                        ? "bg-white shadow text-blue-600"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    kg
+                  </button>
+                  <button
+                    onClick={() => setAppData(prev => ({ ...prev, weightUnit: "g" }))}
+                    className={`px-6 py-2 rounded-lg text-sm font-semibold transition-all ${
+                      appData.weightUnit === "g"
+                        ? "bg-white shadow text-blue-600"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    g
+                  </button>
+                </div>
+              </div>
+
               <input
                 id="real-weight"
                 type="number"
                 inputMode="decimal"
                 step="0.01"
-                placeholder="Example: 0.4 kg"
+                placeholder={appData.weightUnit === "kg" ? "Example: 0.4" : "Example: 400"}
                 value={appData.realWeight}
                 onChange={(e) => setAppData((prev) => ({ ...prev, realWeight: e.target.value }))}
                 className="text-center text-lg font-semibold h-12 bg-white border border-gray-300 focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.15)] rounded-xl mb-4 w-full px-3 focus:outline-none"
               />
               <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                <p className="text-xs text-gray-700 text-center">If provided, this value will be used for packaging calculations.</p>
+                <p className="text-xs text-gray-700 text-center">
+                  If provided, real weight will be used instead of AI estimate for packaging calculations.
+                </p>
               </div>
             </CardContent>
           </Card>
         </div>
 
+        {/* Error message */}
+        {generationError && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl px-6 py-4 text-sm text-center">
+            ⚠️ {generationError}
+          </div>
+        )}
+
         <div className="text-center pb-12">
-          <Button size="lg" onClick={() => setCurrentPage("packaging")} className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl">
-            Generate Packaging Recommendation <ChevronRight className="w-5 h-5 ml-2" />
+          <Button
+            size="lg"
+            onClick={handleGeneratePackaging}
+            disabled={isGenerating}
+            className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-8 py-6 rounded-xl shadow-xl disabled:opacity-50"
+          >
+            {isGenerating ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                Generating...
+              </>
+            ) : (
+              <>Generate Packaging Recommendation <ChevronRight className="w-5 h-5 ml-2" /></>
+            )}
           </Button>
+          {isGenerating && (
+            <p className="text-sm text-gray-500 mt-3">Generating packaging recommendation...</p>
+          )}
         </div>
       </div>
     </div>
@@ -1261,7 +1384,8 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
   };
 
   const resetData: AppData = {
-    topViewImage: null, sideViewImage: null, knownWidth: "",
+    frontViewImage: null, topViewImage: null, knownWidth: "",
+    annotatedImageUrl: null,
     detectedObject: "Plastic Bottle", confidence: 94,
     dimensions: { length: 22.5, width: 7.8, height: 16.4, volume: 2876.4 },
     materials: [
@@ -1269,7 +1393,9 @@ function PricingPage({ appData, setAppData, currentPage, setCurrentPage }: PageP
       { name: "Plastic", confidence: 28 }
     ],
     materialProperties: { category: "Consumer Goods", fragility: "Moderate" },
-    estimatedWeight: 0.38, realWeight: "",
+    estimatedWeight: 0.38, realWeight: "",weightUnit: "kg",
+    _materialData: null,
+    _realDimensions: null,
     packaging: { type: "Corrugated Cardboard Box", boxDimensions: "28 × 14 × 22 cm", cushioning: "Bubble Wrap + Edge Protectors" },
     bom: [
       { material: "Corrugated Sheet", quantity: "0.8", unit: "sq.m", usage: "Box Material" },
@@ -1457,7 +1583,8 @@ export default function App() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
   const [appData, setAppData] = useState<AppData>({
-    topViewImage: null, sideViewImage: null, knownWidth: "",
+    frontViewImage: null, topViewImage: null, knownWidth: "",
+    annotatedImageUrl: null,
     detectedObject: "Plastic Bottle", confidence: 94,
     dimensions: { length: 22.5, width: 7.8, height: 16.4, volume: 2876.4 },
     materials: [
@@ -1465,7 +1592,9 @@ export default function App() {
       { name: "Cardboard", confidence: 28 }
     ],
     materialProperties: { category: "Consumer Goods", fragility: "Moderate" },
-    estimatedWeight: 0.38, realWeight: "",
+    estimatedWeight: 0.38, realWeight: "",weightUnit: "kg",
+    _materialData: null,
+    _realDimensions: null,
     packaging: { type: "Corrugated Cardboard Box", boxDimensions: "28 × 14 × 22 cm", cushioning: "Bubble Wrap + Edge Protectors" },
     bom: [
       { material: "Corrugated Sheet", quantity: "0.8", unit: "sq.m", usage: "Box Material" },
@@ -1501,7 +1630,7 @@ export default function App() {
           const file = new File([blob], `${currentCameraView}-view.jpg`, { type: "image/jpeg" });
           setAppData((prev) => ({
             ...prev,
-            [currentCameraView === "top" ? "topViewImage" : "sideViewImage"]: {
+            [currentCameraView === "front" ? "frontViewImage" : "topViewImage"]: {
               url: capturedImage,
               file,
             },
@@ -1511,11 +1640,11 @@ export default function App() {
     }
   };
 
-  const handleImageUpload = (file: File, type: "top" | "side") => {
+  const handleImageUpload = (file: File, type: "front" | "top") => {
     const url = URL.createObjectURL(file);
     setAppData((prev) => ({
       ...prev,
-      [type === "top" ? "topViewImage" : "sideViewImage"]: { url, file },
+      [type === "front" ? "frontViewImage" : "topViewImage"]: { url, file },
     }));
   };
 

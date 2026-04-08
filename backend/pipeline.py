@@ -4,6 +4,9 @@ from modules.material import predict_material
 from modules.weight import estimate_weight
 from modules.packaging import get_packaging_recommendation
 from modules.bom import generate_bom
+import os
+import base64
+import cv2
 
 def run_detection_pipeline(front_image_path, top_image_path, real_width_cm):
     """
@@ -31,8 +34,19 @@ def run_detection_pipeline(front_image_path, top_image_path, real_width_cm):
         front_data["object_name"]
     )
 
+    # bbox_b64 = None
+    # bbox_path = front_data.get("bbox_image_path")
+    # if bbox_path and os.path.exists(bbox_path):
+    #     _, buffer = cv2.imencode(".jpg", cv2.imread(bbox_path))
+    #     bbox_b64 = base64.b64encode(buffer).decode("utf-8")
+        # os.remove(bbox_path) 
+    
+    crop_path = front_data.get("crop_image_path")
+    if crop_path and os.path.exists(crop_path):
+        os.remove(crop_path)
+
     return {
-        "bbox_image_path": front_data["bbox_image_path"],
+        "bbox_image_path":front_data["bbox_image_path"],
         "object_name": front_data["object_name"],
         "object_confidence": front_data["confidence"],
         "real_dimensions": real_dimensions,
