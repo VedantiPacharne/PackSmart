@@ -1,3 +1,5 @@
+import { formatDimension } from "../utils/formatDimension";
+
 /**
  * BoxDieline.tsx
  * Renders a 2D flat box dieline (net) using real L x W x H dimensions
@@ -17,9 +19,10 @@ type BoxDielineProps = {
 };
 
 export default function BoxDieline({ length, width, height }: BoxDielineProps) {
-  // ── Scale: fit into SVG canvas and avoid overflow ───────────────────────────
-  const MAX_CANVAS_SIZE = 460; // max width/height in pixels for the SVG viewport
-  const PADDING = 24;
+  // â”€â”€ Scale: fit into SVG canvas and avoid overflow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const MAX_CANVAS_SIZE = 1100; // larger fixed viewport
+  const PADDING = 80;
+  const DESIRED_SCALE = 4.8; // increase scale for bigger diagram
 
   const rawW = Math.max(1, width);
   const rawH = Math.max(1, height);
@@ -28,23 +31,24 @@ export default function BoxDieline({ length, width, height }: BoxDielineProps) {
   const neededWidth = rawL + rawW + rawL + rawW;
   const neededHeight = rawH * 3;
 
-  const proposedScale = Math.min(
-    (MAX_CANVAS_SIZE - PADDING * 2) / neededWidth,
-    (MAX_CANVAS_SIZE - PADDING * 2) / neededHeight
-  );
-
-  const SCALE = Math.max(0.6, Math.min(6, proposedScale));
+  const SCALE = DESIRED_SCALE; // always use fixed scale, no fitting calculation
 
   const W = rawW * SCALE;
   const H = rawH * SCALE;
   const L = rawL * SCALE;
 
-  const svgWidth = Math.max(MAX_CANVAS_SIZE, Math.ceil(neededWidth + PADDING * 2));
-  const svgHeight = Math.max(MAX_CANVAS_SIZE, Math.ceil(neededHeight + PADDING * 2));
+  const neededWidthScaled = neededWidth * SCALE;
+  const neededHeightScaled = neededHeight * SCALE;
+
+  const svgWidth = Math.ceil(neededWidthScaled + PADDING * 2);
+  const svgHeight = Math.ceil(neededHeightScaled + PADDING * 2);
+
+  const xOffset = (svgWidth - neededWidthScaled) / 2;
+  const yOffset = (svgHeight - neededHeightScaled) / 2;
 
   // Origin point (top-left of FRONT face)
-  const ox = PADDING + L;
-  const oy = PADDING + H;
+  const ox = xOffset + L;
+  const oy = yOffset + H;
 
   // Colors
   const fillColor = "#FEF9C3";       // light yellow
@@ -57,7 +61,7 @@ export default function BoxDieline({ length, width, height }: BoxDielineProps) {
   const fontSize = 11;
   const labelSize = 13;
 
-  // ── Helper: dimension line with arrows ──────────────────────────────────────
+  // â”€â”€ Helper: dimension line with arrows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const DimLine = ({
     x1, y1, x2, y2, label, offset = 18, horizontal = true
   }: {
@@ -78,7 +82,7 @@ export default function BoxDieline({ length, width, height }: BoxDielineProps) {
     );
   };
 
-  // ── Face label ──────────────────────────────────────────────────────────────
+  // â”€â”€ Face label â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const FaceLabel = ({ x, y, label }: { x: number; y: number; label: string }) => (
     <text x={x} y={y} textAnchor="middle" dominantBaseline="middle" fill={textColor} fontSize={labelSize} fontWeight="700" opacity={0.7}>
       {label}
@@ -86,24 +90,25 @@ export default function BoxDieline({ length, width, height }: BoxDielineProps) {
   );
 
   return (
-    <div className="w-full overflow-hidden">
-      <svg
-        width={svgWidth}
-        height={svgHeight}
-        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-        className="mx-auto"
-        style={{ maxWidth: "100%" }}
-      >
-        {/* ── Arrow marker definition ── */}
+    <div className="flex justify-center items-center w-full">
+      <div style={{ maxWidth: "100%", display: "flex", justifyContent: "center", paddingLeft: "24px" }}>
+        <svg
+          width={svgWidth}
+          height={svgHeight}
+          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+          preserveAspectRatio="xMidYMid meet"
+          className="mx-auto block"
+        >
+        {/* â”€â”€ Arrow marker definition â”€â”€ */}
         <defs>
           <marker id="arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
             <path d="M0,0 L0,6 L6,3 z" fill={dimColor} />
           </marker>
         </defs>
 
-        {/* ════════════════════════════════════════════
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             FACES
-        ════════════════════════════════════════════ */}
+        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
 
         {/* TOP face */}
         <rect x={ox} y={oy - H} width={W} height={H} fill={fillColor} stroke={strokeColor} strokeWidth={strokeW} />
@@ -129,9 +134,9 @@ export default function BoxDieline({ length, width, height }: BoxDielineProps) {
         <rect x={ox + W + L} y={oy} width={W} height={H} fill={fillColor} stroke={strokeColor} strokeWidth={strokeW} />
         <FaceLabel x={ox + W + L + W / 2} y={oy + H / 2} label="BACK" />
 
-        {/* ════════════════════════════════════════════
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             FOLD LINES (dashed)
-        ════════════════════════════════════════════ */}
+        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
 
         {/* fold: top-front */}
         <line x1={ox} y1={oy} x2={ox + W} y2={oy} stroke={foldColor} strokeWidth={1} strokeDasharray="6 4" />
@@ -144,15 +149,15 @@ export default function BoxDieline({ length, width, height }: BoxDielineProps) {
         {/* fold: right-back */}
         <line x1={ox + W + L} y1={oy} x2={ox + W + L} y2={oy + H} stroke={foldColor} strokeWidth={1} strokeDasharray="6 4" />
 
-        {/* ════════════════════════════════════════════
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             DIMENSION LINES
-        ════════════════════════════════════════════ */}
+        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
 
         {/* Width dimension (top, horizontal) */}
         <DimLine
           x1={ox} y1={oy - H - 20}
           x2={ox + W} y2={oy - H - 20}
-          label={`W: ${width} cm`}
+          label={`W: ${formatDimension(width)} cm`}
           horizontal={true}
         />
 
@@ -160,7 +165,7 @@ export default function BoxDieline({ length, width, height }: BoxDielineProps) {
         <DimLine
           x1={ox - L - 20} y1={oy}
           x2={ox - L - 20} y2={oy + H}
-          label={`H: ${height} cm`}
+          label={`H: ${formatDimension(height)} cm`}
           horizontal={false}
         />
 
@@ -168,15 +173,15 @@ export default function BoxDieline({ length, width, height }: BoxDielineProps) {
         <DimLine
           x1={ox + W} y1={oy + H + H + 20}
           x2={ox + W + L} y2={oy + H + H + 20}
-          label={`L: ${length} cm`}
+          label={`L: ${formatDimension(length)} cm`}
           horizontal={true}
         />
 
-        {/* ════════════════════════════════════════════
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             CORNER MARKS (cut lines)
-        ════════════════════════════════════════════ */}
-        {[
-          [ox, oy - H], [ox + W, oy - H],
+        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+        {[[
+          ox, oy - H], [ox + W, oy - H],
           [ox, oy + H + H], [ox + W, oy + H + H],
           [ox - L, oy], [ox - L, oy + H],
           [ox + W + L + W, oy], [ox + W + L + W, oy + H],
@@ -187,9 +192,9 @@ export default function BoxDieline({ length, width, height }: BoxDielineProps) {
           </g>
         ))}
 
-        {/* ════════════════════════════════════════════
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             LEGEND
-        ════════════════════════════════════════════ */}
+        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         <g transform={`translate(${PADDING}, ${svgHeight - 30})`}>
           <line x1={0} y1={8} x2={20} y2={8} stroke={foldColor} strokeWidth={1.5} strokeDasharray="6 4" />
           <text x={25} y={12} fill={textColor} fontSize={10}>Fold line</text>
@@ -199,21 +204,6 @@ export default function BoxDieline({ length, width, height }: BoxDielineProps) {
           <text x={185} y={12} fill={dimColor} fontSize={10}>Dimension</text>
         </g>
       </svg>
-
-      {/* ── Summary below SVG ── */}
-      <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <p className="text-xs text-gray-500 mb-1">Width</p>
-          <p className="text-lg font-bold text-amber-700">{width} cm</p>
-        </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <p className="text-xs text-gray-500 mb-1">Height</p>
-          <p className="text-lg font-bold text-amber-700">{height} cm</p>
-        </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <p className="text-xs text-gray-500 mb-1">Length</p>
-          <p className="text-lg font-bold text-amber-700">{length} cm</p>
-        </div>
       </div>
     </div>
   );

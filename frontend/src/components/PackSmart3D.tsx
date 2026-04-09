@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-export type BoxType = "cardboard" | "bottle" | "plywood";
+export type BoxType = "cardboard" | "cardboard_light" | "bottle" | "plywood";
 
 export interface PackSmartProps {
   length: number;
@@ -14,8 +14,8 @@ const styles: Record<string, React.CSSProperties> = {
   wrapper: {
     position: "relative",
     width: "100%",
-    height: "460px", // fixed height ensures 3d canvas appears inside card (parent has min-height only)
-    minHeight: "420px",
+    height: "520px", // fixed height ensures 3d canvas appears inside card (parent has min-height only)
+    minHeight: "500px",
     overflow: "hidden",
     fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
     background: "transparent",
@@ -41,7 +41,7 @@ function mkFlap(w: number, h: number, t: number, mat: THREE.Material): THREE.Gro
   return g;
 }
 
-function buildCardboard(L: number, B: number, H: number, t: number, g: THREE.Group) {
+function buildCardboard(L: number, B: number, H: number, t: number, g: THREE.Group, flapAngle = Math.PI / 3.5) {
   const outerMat = new THREE.MeshStandardMaterial({ color: 0xc8955a, roughness: 0.85 });
   const dblMat = new THREE.MeshStandardMaterial({ color: 0xc8955a, roughness: 0.85, side: THREE.DoubleSide });
 
@@ -59,16 +59,15 @@ function buildCardboard(L: number, B: number, H: number, t: number, g: THREE.Gro
   const topY = H / 2;
   const outerFD = B / 2;
   const innerFD = Math.min(L / 2, B / 2 - t);
-  const ang = Math.PI / 3.5;
 
   const ff = mkFlap(L - 2 * t, outerFD, t, dblMat);
   ff.position.set(0, topY, B / 2 - t);
-  ff.rotation.x = ang;
+  ff.rotation.x = flapAngle;
   g.add(ff);
 
   const fb = mkFlap(L - 2 * t, outerFD, t, dblMat);
   fb.position.set(0, topY, -B / 2 + t);
-  fb.rotation.x = -ang;
+  fb.rotation.x = -flapAngle;
   g.add(fb);
 
   const fl = new THREE.Group();
@@ -86,6 +85,10 @@ function buildCardboard(L: number, B: number, H: number, t: number, g: THREE.Gro
   fr.position.set(L / 2 - t, topY, 0);
   fr.rotation.z = -Math.PI / 2.8;
   g.add(fr);
+}
+
+function buildCardboardLight(L: number, B: number, H: number, t: number, g: THREE.Group) {
+  buildCardboard(L, B, H, t, g, Math.PI / 2.2);
 }
 
 function buildBottleBox(L: number, B: number, H: number, t: number, g: THREE.Group) {
@@ -199,6 +202,7 @@ function buildPlywood(L: number, B: number, H: number, t: number, g: THREE.Group
 
 const BOX_LABELS: Record<BoxType, string> = {
   cardboard: "📦 Cardboard (4 Flaps)",
+  cardboard_light: "📦 Lightweight Cardboard",
   bottle: "🧴 Bottle Box (Tuck Top)",
   plywood: "🪵 Plywood Crate (Framed)",
 };
@@ -220,7 +224,7 @@ export default function PackSmart3D({ length, breadth, height, boxType }: PackSm
     rpy: 0,
     rotY: 0.6,
     rotX: 0.5,
-    zoom: 16,
+    zoom: 5,
     panX: 0,
     panY: 0,
   });
@@ -337,17 +341,19 @@ export default function PackSmart3D({ length, breadth, height, boxType }: PackSm
       boxGroupRef.current = null;
     }
 
-    const sc = 0.1;
-    const L = Math.max(0.1, length) * sc;
-    const B = Math.max(0.1, breadth) * sc;
-    const H = Math.max(0.1, height) * sc;
+    const sc = 0.12;
+    const L = Math.min(10, Math.max(1.5, Math.max(0.1, length) * sc));
+    const B = Math.min(10, Math.max(1.5, Math.max(0.1, breadth) * sc));
+    const H = Math.min(10, Math.max(1.5, Math.max(0.1, height) * sc));
     const t = Math.max(0.01, Math.min(L, B, H) * 0.04);
 
     floor.position.y = -H / 2;
+    orbitRef.current.zoom = 5;
 
     const group = new THREE.Group();
 
     if (boxType === "cardboard") buildCardboard(L, B, H, t, group);
+    else if (boxType === "cardboard_light") buildCardboardLight(L, B, H, t, group);
     else if (boxType === "bottle") buildBottleBox(L, B, H, t, group);
     else buildPlywood(L, B, H, t, group, floor);
 

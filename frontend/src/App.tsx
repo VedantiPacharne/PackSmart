@@ -52,6 +52,7 @@ import {
 import { ImageWithFallback } from "./components/figma/ImageWithFallback";
 import BoxDieline from "./components/BoxDieline";
 import PackSmart3D, { BoxType } from "./components/PackSmart3D";
+import { formatDimension } from "./utils/formatDimension";
 
 type Page =
   | "landing"
@@ -1322,8 +1323,10 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
 function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
   const currentBoxType: BoxType = (() => {
     const low = appData.packaging.type.toLowerCase();
+    if (appData.estimatedWeight <= 1) return "bottle"; // bottle box for objects 1kg or less
     if (low.includes("bottle")) return "bottle";
     if (low.includes("plywood") || low.includes("wood")) return "plywood";
+    if (low.includes("single panel") || low.includes("light")) return "cardboard_light";
     return "cardboard";
   })();
 
@@ -1346,7 +1349,7 @@ function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                 <div className="bg-white rounded-lg p-4 border border-amber-300"><p className="text-xs text-gray-600 mb-1">Packaging Material</p><p className="font-bold text-orange-600">{appData.packaging.type}</p></div>
-                <div className="bg-white rounded-lg p-4 border border-amber-300"><p className="text-xs text-gray-600 mb-1">Box Dimensions</p><p className="font-bold text-orange-600">{appData.dimensions.length + 2} × {appData.dimensions.width + 2} × {appData.dimensions.height + 2} cm</p></div>
+                <div className="bg-white rounded-lg p-4 border border-amber-300"><p className="text-xs text-gray-600 mb-1">Box Dimensions</p><p className="font-bold text-orange-600">{appData.dimensions.length} × {appData.dimensions.width} × {appData.dimensions.height} cm</p></div>
                 <div className="bg-white rounded-lg p-4 border border-amber-300"><p className="text-xs text-gray-600 mb-1">Protection Level</p><p className="font-bold text-orange-600">{appData.packaging.cushioning}</p></div>
               </div>
             </div>
@@ -1358,9 +1361,23 @@ function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
           <Card className="border-0 shadow-lg bg-white">
             <CardContent className="p-8">
               <div className="flex items-center space-x-2 mb-6"><FileText className="w-5 h-5 text-blue-600" /><h3 className="font-semibold text-gray-900">2D Flat Layout</h3></div>
-              <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-6 flex flex-col items-center justify-center min-h-[440px]">
+              <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-6 flex flex-col items-center justify-start min-h-[640px]">
                 <BoxDieline length={appData.dimensions.length} width={appData.dimensions.width} height={appData.dimensions.height} />
-                <p className="text-sm text-gray-600 mt-4">Scaled 2D box dieline — fold on dashed lines, cut on solid lines</p>
+                <div className="w-full mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
+                    <p className="text-xs text-gray-500 mb-1">Width</p>
+                    <p className="text-lg font-bold text-amber-700">{formatDimension(appData.dimensions.width)} cm</p>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
+                    <p className="text-xs text-gray-500 mb-1">Height</p>
+                    <p className="text-lg font-bold text-amber-700">{formatDimension(appData.dimensions.height)} cm</p>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
+                    <p className="text-xs text-gray-500 mb-1">Length</p>
+                    <p className="text-lg font-bold text-amber-700">{formatDimension(appData.dimensions.length)} cm</p>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-6">Scaled 2D box dieline — fold on dashed lines, cut on solid lines</p>
               </div>
             </CardContent>
           </Card>
