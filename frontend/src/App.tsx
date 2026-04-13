@@ -1,3 +1,4 @@
+import { Users } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -375,7 +376,7 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-16 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
             <div>
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-teal-500 rounded-lg flex items-center justify-center"><Package className="w-5 h-5 text-white" /></div>
@@ -383,13 +384,7 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
               </div>
               <p className="text-gray-400 text-sm">Intelligent Packaging Automation</p>
             </div>
-            <div>
-              <h3 className="font-semibold mb-4 text-white">Product</h3>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><button className="hover:text-white transition-colors">Modules</button></li>
-                <li><button className="hover:text-white transition-colors">Pricing</button></li>
-              </ul>
-            </div>
+            
             <div id="technology-section">
               <h3 className="font-semibold mb-4 text-white">Technology</h3>
               <ul className="space-y-2 text-sm text-gray-400">
@@ -399,10 +394,27 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-4 text-white">Contact</h3>
+              <h3 className="font-semibold mb-4 text-white">Resources</h3>
               <ul className="space-y-3 text-sm text-gray-400">
-                <li className="flex items-center space-x-2"><Mail className="w-4 h-4" /><a href="mailto:hello@packsmart.ai" className="hover:text-white transition-colors">hello@packsmart.ai</a></li>
-                <li className="flex items-center space-x-2"><Linkedin className="w-4 h-4" /><a href="#" className="hover:text-white transition-colors">LinkedIn</a></li>
+<li className="flex items-center space-x-2">
+  <Users className="w-4 h-4" />
+  <button
+    onClick={() => {
+      setCurrentPage("about");
+      setTimeout(() => {
+        document.getElementById("meet-the-team")?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }}
+    className="hover:text-white transition-colors"
+  >
+    Authors
+  </button>
+</li><li className="flex items-center space-x-2">
+  <FileText className="w-4 h-4" />
+  <a href="/PACKSMART.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+    Documentation
+  </a>
+</li>
                 <li className="flex items-center space-x-2"><MapPin className="w-4 h-4" /><span>Pune, India</span></li>
               </ul>
             </div>
@@ -420,10 +432,10 @@ function LandingPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
 
 function AboutPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
   const team = [
-    { name: "Student Name 1", role: "Computer Vision & Backend" },
-    { name: "Student Name 2", role: "Frontend & UI/UX" },
-    { name: "Student Name 3", role: "ML & Material Classification" },
-    { name: "Student Name 4", role: "Integration & Testing" },
+    { name: "Vedanti Pacharne", role: "vedantipacharne@gmail.com" },
+    { name: "Sayee Rananaware", role: "sayee.rananaware@gmail.com" },
+    { name: "Aabha Thoke", role: "aabhathoke6@gmail.com" },
+    { name: "Manaswi Dasi", role: "dasi.manaswi@gmail.com" },
   ];
 
   const steps = [
@@ -517,13 +529,13 @@ function AboutPage({ setCurrentPage }: Pick<PageProps, "setCurrentPage">) {
       </section>
 
       {/* Team */}
-      <section className="py-16 px-6 bg-white/60">
+      <section id="meet-the-team" className="py-16 px-6 bg-white/60">
         <div className="max-w-5xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-3">Meet the Team</h2>
             <p className="text-gray-600">Final Year B.E. Students — Pune, India</p>
           </motion.div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 gap-6">
             {team.map((member, i) => (
               <motion.div key={member.name} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
                 <Card className="border-0 shadow-lg bg-white text-center hover:shadow-xl transition-shadow">
