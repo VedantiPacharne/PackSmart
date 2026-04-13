@@ -158,6 +158,18 @@ const pageStepsMap: Record<Page, number> = {
   pricing: 6,
 };
 
+function parseBoxDimensions(boxDimensions: string, fallback: { length: number; width: number; height: number }) {
+  const values = boxDimensions?.match(/([0-9]+(?:\.[0-9]+)?)/g);
+  if (!values || values.length < 3) {
+    return fallback;
+  }
+  return {
+    length: Number(values[0]),
+    width: Number(values[1]),
+    height: Number(values[2]),
+  };
+}
+
 function ProgressIndicator({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
   if (currentStep === 0) return null;
   const steps = [
@@ -1335,12 +1347,13 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
 function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
   const currentBoxType: BoxType = (() => {
     const low = appData.packaging.type.toLowerCase();
-    if (appData.estimatedWeight <= 1) return "bottle"; // bottle box for objects 1kg or less
-    if (low.includes("bottle")) return "bottle";
-    if (low.includes("plywood") || low.includes("wood")) return "plywood";
-    if (low.includes("single panel") || low.includes("light")) return "cardboard_light";
+    if (low.includes("plywood crate") || low.includes("wood")) return "plywood";
+    if (low.includes("single panel cardboard box") || low.includes("light")) return "bottle";
+    if (low.includes("4 panel cardboard box") || low.includes("medium")) return "cardboard";
     return "cardboard";
   })();
+
+  const packagingDims = parseBoxDimensions(appData.packaging.boxDimensions, appData.dimensions);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
@@ -1361,7 +1374,7 @@ function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                 <div className="bg-white rounded-lg p-4 border border-amber-300"><p className="text-xs text-gray-600 mb-1">Packaging Material</p><p className="font-bold text-orange-600">{appData.packaging.type}</p></div>
-                <div className="bg-white rounded-lg p-4 border border-amber-300"><p className="text-xs text-gray-600 mb-1">Box Dimensions</p><p className="font-bold text-orange-600">{appData.dimensions.length} × {appData.dimensions.width} × {appData.dimensions.height} cm</p></div>
+                <div className="bg-white rounded-lg p-4 border border-amber-300"><p className="text-xs text-gray-600 mb-1">Box Dimensions</p><p className="font-bold text-orange-600">{packagingDims.length} × {packagingDims.width} × {packagingDims.height} cm</p></div>
                 <div className="bg-white rounded-lg p-4 border border-amber-300"><p className="text-xs text-gray-600 mb-1">Protection Level</p><p className="font-bold text-orange-600">{appData.packaging.cushioning}</p></div>
               </div>
             </div>
@@ -1374,19 +1387,19 @@ function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
             <CardContent className="p-8">
               <div className="flex items-center space-x-2 mb-6"><FileText className="w-5 h-5 text-blue-600" /><h3 className="font-semibold text-gray-900">2D Flat Layout</h3></div>
               <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-6 flex flex-col items-center justify-start min-h-[640px]">
-                <BoxDieline length={appData.dimensions.length} width={appData.dimensions.width} height={appData.dimensions.height} />
+                <BoxDieline length={packagingDims.length} width={packagingDims.width} height={packagingDims.height} />
                 <div className="w-full mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
                     <p className="text-xs text-gray-500 mb-1">Width</p>
-                    <p className="text-lg font-bold text-amber-700">{formatDimension(appData.dimensions.width)} cm</p>
+                    <p className="text-lg font-bold text-amber-700">{formatDimension(packagingDims.width)} cm</p>
                   </div>
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
                     <p className="text-xs text-gray-500 mb-1">Height</p>
-                    <p className="text-lg font-bold text-amber-700">{formatDimension(appData.dimensions.height)} cm</p>
+                    <p className="text-lg font-bold text-amber-700">{formatDimension(packagingDims.height)} cm</p>
                   </div>
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
                     <p className="text-xs text-gray-500 mb-1">Length</p>
-                    <p className="text-lg font-bold text-amber-700">{formatDimension(appData.dimensions.length)} cm</p>
+                    <p className="text-lg font-bold text-amber-700">{formatDimension(packagingDims.length)} cm</p>
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 mt-6">Scaled 2D box dieline — fold on dashed lines, cut on solid lines</p>
@@ -1399,9 +1412,7 @@ function PackagingPage({ appData, currentPage, setCurrentPage }: PageProps) {
               <div className="flex items-center space-x-2 mb-6"><Box className="w-5 h-5 text-purple-600" /><h3 className="font-semibold text-gray-900">3D Interactive Preview</h3></div>
               <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-purple-100 rounded-lg p-4 min-h-[459px]">
                 <PackSmart3D
-                  length={appData.dimensions.length}
-                  breadth={appData.dimensions.width}
-                  height={appData.dimensions.height}
+                  length={packagingDims.length} breadth={packagingDims.width} height={packagingDims.height} 
                   boxType={currentBoxType}
                 />
                 <p className="text-sm text-gray-700 mt-3 text-center">Drag inside the 3D view to orbit, right-drag to pan, wheel to zoom. Model type follows recommended packaging: {appData.packaging.type}.</p>

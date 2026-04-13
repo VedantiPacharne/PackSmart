@@ -1,8 +1,8 @@
 {
   "weight_categories_kg": {
-    "light": 2,
-    "medium": 10,
-    "heavy": 50
+    "light": 1,
+    "medium": 5,
+    "heavy": 20
   },
 
   "outer_packaging_by_weight": {

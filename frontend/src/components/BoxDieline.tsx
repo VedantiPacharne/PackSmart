@@ -7,9 +7,9 @@ import { formatDimension } from "../utils/formatDimension";
  *
  * Box Net Layout:
  *
- *              [   TOP   ]
- *   [LEFT] [FRONT] [RIGHT] [BACK]
- *              [  BOTTOM ]
+ *                 [ LEFT ]
+ *   [TOP] [FRONT] [BOTTOM] [BACK]
+ *                 [ RIGHT]
  */
 
 type BoxDielineProps = {
@@ -112,27 +112,27 @@ export default function BoxDieline({ length, width, height }: BoxDielineProps) {
 
         {/* TOP face */}
         <rect x={ox} y={oy - H} width={W} height={H} fill={fillColor} stroke={strokeColor} strokeWidth={strokeW} />
-        <FaceLabel x={ox + W / 2} y={oy - H / 2} label="TOP" />
+        <FaceLabel x={ox + W / 2} y={oy - H / 2} label="L" />
 
         {/* FRONT face */}
         <rect x={ox} y={oy} width={W} height={H} fill={fillColor} stroke={strokeColor} strokeWidth={strokeW} />
-        <FaceLabel x={ox + W / 2} y={oy + H / 2} label="FRONT" />
+        <FaceLabel x={ox + W / 2} y={oy + H / 2} label="F" />
 
         {/* BOTTOM face */}
         <rect x={ox} y={oy + H} width={W} height={H} fill={fillColor} stroke={strokeColor} strokeWidth={strokeW} />
-        <FaceLabel x={ox + W / 2} y={oy + H + H / 2} label="BOTTOM" />
+        <FaceLabel x={ox + W / 2} y={oy + H + H / 2} label="R" />
 
         {/* LEFT face */}
         <rect x={ox - L} y={oy} width={L} height={H} fill={fillColor} stroke={strokeColor} strokeWidth={strokeW} />
-        <FaceLabel x={ox - L / 2} y={oy + H / 2} label="LEFT" />
+        <FaceLabel x={ox - L / 2} y={oy + H / 2} label="T" />
 
         {/* RIGHT face */}
         <rect x={ox + W} y={oy} width={L} height={H} fill={fillColor} stroke={strokeColor} strokeWidth={strokeW} />
-        <FaceLabel x={ox + W + L / 2} y={oy + H / 2} label="RIGHT" />
+        <FaceLabel x={ox + W + L / 2} y={oy + H / 2} label="GL" />
 
         {/* BACK face */}
         <rect x={ox + W + L} y={oy} width={W} height={H} fill={fillColor} stroke={strokeColor} strokeWidth={strokeW} />
-        <FaceLabel x={ox + W + L + W / 2} y={oy + H / 2} label="BACK" />
+        <FaceLabel x={ox + W + L + W / 2} y={oy + H / 2} label="B" />
 
         {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             FOLD LINES (dashed)
@@ -191,18 +191,7 @@ export default function BoxDieline({ length, width, height }: BoxDielineProps) {
             <line x1={cx} y1={cy - 6} x2={cx} y2={cy + 6} stroke="#9CA3AF" strokeWidth={1} />
           </g>
         ))}
-
-        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-            LEGEND
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
-        <g transform={`translate(${PADDING}, ${svgHeight - 30})`}>
-          <line x1={0} y1={8} x2={20} y2={8} stroke={foldColor} strokeWidth={1.5} strokeDasharray="6 4" />
-          <text x={25} y={12} fill={textColor} fontSize={10}>Fold line</text>
-          <line x1={80} y1={8} x2={100} y2={8} stroke={strokeColor} strokeWidth={1.5} />
-          <text x={105} y={12} fill={textColor} fontSize={10}>Cut line</text>
-          <line x1={160} y1={8} x2={180} y2={8} stroke={dimColor} strokeWidth={1} />
-          <text x={185} y={12} fill={dimColor} fontSize={10}>Dimension</text>
-        </g>
+        
       </svg>
       </div>
     </div>

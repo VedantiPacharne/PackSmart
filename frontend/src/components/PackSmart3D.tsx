@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-export type BoxType = "cardboard" | "cardboard_light" | "bottle" | "plywood";
+export type BoxType = "cardboard" | "bottle" | "plywood";
 
 export interface PackSmartProps {
   length: number;
@@ -87,9 +87,6 @@ function buildCardboard(L: number, B: number, H: number, t: number, g: THREE.Gro
   g.add(fr);
 }
 
-function buildCardboardLight(L: number, B: number, H: number, t: number, g: THREE.Group) {
-  buildCardboard(L, B, H, t, g, Math.PI / 2.2);
-}
 
 function buildBottleBox(L: number, B: number, H: number, t: number, g: THREE.Group) {
   const outerMat = new THREE.MeshStandardMaterial({ color: 0xc8955a, roughness: 0.85 });
@@ -202,7 +199,6 @@ function buildPlywood(L: number, B: number, H: number, t: number, g: THREE.Group
 
 const BOX_LABELS: Record<BoxType, string> = {
   cardboard: "📦 Cardboard (4 Flaps)",
-  cardboard_light: "📦 Lightweight Cardboard",
   bottle: "🧴 Bottle Box (Tuck Top)",
   plywood: "🪵 Plywood Crate (Framed)",
 };
@@ -341,10 +337,11 @@ export default function PackSmart3D({ length, breadth, height, boxType }: PackSm
       boxGroupRef.current = null;
     }
 
-    const sc = 0.12;
-    const L = Math.min(10, Math.max(1.5, Math.max(0.1, length) * sc));
-    const B = Math.min(10, Math.max(1.5, Math.max(0.1, breadth) * sc));
-    const H = Math.min(10, Math.max(1.5, Math.max(0.1, height) * sc));
+    const maxDim = Math.max(length, breadth, height);
+    const sc = maxDim > 0 ? 2 / maxDim : 1;
+    const L = Math.max(0.1, length * sc);
+    const B = Math.max(0.1, breadth * sc);
+    const H = Math.max(0.1, height * sc);
     const t = Math.max(0.01, Math.min(L, B, H) * 0.04);
 
     floor.position.y = -H / 2;
@@ -353,7 +350,6 @@ export default function PackSmart3D({ length, breadth, height, boxType }: PackSm
     const group = new THREE.Group();
 
     if (boxType === "cardboard") buildCardboard(L, B, H, t, group);
-    else if (boxType === "cardboard_light") buildCardboardLight(L, B, H, t, group);
     else if (boxType === "bottle") buildBottleBox(L, B, H, t, group);
     else buildPlywood(L, B, H, t, group, floor);
 
