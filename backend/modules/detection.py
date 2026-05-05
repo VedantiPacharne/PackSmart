@@ -11,8 +11,8 @@ def load_model(model_path=None):
     global _model
     if _model is None:
         if model_path is None:
-            # Go up 3 levels from backend/modules to root
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            # Go up 2 levels from backend/modules to root
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             model_path = os.path.join(base_dir, "models", "best.pt")
         _model = YOLO(model_path)
     return _model

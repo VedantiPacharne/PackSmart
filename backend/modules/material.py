@@ -8,8 +8,8 @@ import numpy as np
 from torchvision import models, transforms
 
 def get_model_path():
-    # Go up 3 levels from backend/modules to root
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    # Go up 2 levels from backend/modules to root
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base_dir, "models", "efficientnetb4_best_model.pth")
 
 MODEL_PATH = get_model_path()
