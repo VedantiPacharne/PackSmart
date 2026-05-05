@@ -15,9 +15,6 @@ backend/uploads/
 /venv
 .env
 
-backend/models/
-*.pt
-*.pth
 
 # OS files
 .DS_Store
