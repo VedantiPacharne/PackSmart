@@ -81,7 +81,7 @@ def get_packaging_recommendation(
         height,
         protection_layer
     )
-    box_dimensions =  f"{adjusted_dims["length_cm"]} × {adjusted_dims["width_cm"]} × {adjusted_dims["height_cm"]} cm"
+    box_dimensions = f"{adjusted_dims['length_cm']} × {adjusted_dims['width_cm']} × {adjusted_dims['height_cm']} cm"
 
     # Final Output
     return {
