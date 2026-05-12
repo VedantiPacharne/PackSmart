@@ -9,15 +9,12 @@ node_modules/
 
 # Uploads & outputs
 backend/uploads/
-backend/outputs/
+
 
 # Environment
 /venv
 .env
 
-backend/models/
-*.pt
-*.pth
 
 # OS files
 .DS_Store
