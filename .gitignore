@@ -19,3 +19,5 @@ backend/uploads/
 # OS files
 .DS_Store
 Thumbs.db
+backend/outputs/
+backend/uploaded_images/
