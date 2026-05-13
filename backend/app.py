@@ -36,15 +36,15 @@ def allowed_file(filename):
 
 
 # ---------------- STARTUP EVENT (LOAD MODELS ONCE) ----------------
-@app.on_event("startup")
-def load_models():
-    print("Loading Detection Model...")
-    load_model()
+#@app.on_event("startup")
+#def load_models():
+#    print("Loading Detection Model...")
+#    load_model()
 
-    print("Loading Material Model...")
-    load_material_model()
+#    print("Loading Material Model...")
+#    load_material_model()
 
-    print("All models loaded successfully!")
+#    print("All models loaded successfully!")
 
 
 # ---------------- ROOT ENDPOINT ----------------
