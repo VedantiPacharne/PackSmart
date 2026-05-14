@@ -22,16 +22,11 @@ def load_model(model_path=None):
 def detect_front_object(image_path, save_dir="outputs"):
     """
     Detect object from front image and return reusable outputs.
-
-    Returns:
-        dict containing:
-            width_px
-            height_px
-            bbox_image_path
-            crop_image_path
-            object name
-            confidence
+    ...
     """
+    global _model
+    if _model is None:
+        load_model()
     
     # read image
     img = cv2.imread(image_path)

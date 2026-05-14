@@ -109,6 +109,10 @@ transform = transforms.Compose([
     )
 ])
 
+
+global _model_material, _class_names
+if _model_material is None:
+    load_material_model()
 # MATERIAL PREDICTION FUNCTION
 def predict_material(image_path, object_name):
     """
