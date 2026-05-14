@@ -110,9 +110,7 @@ transform = transforms.Compose([
 ])
 
 
-global _model_material, _class_names
-if _model_material is None:
-    load_material_model()
+
 # MATERIAL PREDICTION FUNCTION
 def predict_material(image_path, object_name):
     """
@@ -126,6 +124,9 @@ def predict_material(image_path, object_name):
         fragility
     }
     """
+    global _model_material, _class_names
+    if _model_material is None:
+        load_material_model()
 
     image = cv2.imread(image_path)
     if image is None:
@@ -140,7 +141,6 @@ def predict_material(image_path, object_name):
 
     probs = probs.cpu().numpy()[0]
 
-    # Get indices of top 2 probabilities
     top_indices = np.argsort(probs)[::-1][:2]
 
     MATERIAL_CONFIDENCE_THRESHOLD = 90.0
@@ -152,14 +152,10 @@ def predict_material(image_path, object_name):
             "confidence": round(float(probs[idx] * 100), 2)
         })
 
-    # If the top prediction is highly confident, drop the second
     if top_materials[0]["confidence"] >= MATERIAL_CONFIDENCE_THRESHOLD:
         top_materials = top_materials[:1]
 
-     # 🔹 Fragility
     fragility = get_fragility(top_materials)
-
-    # 🔹 Object Category
     object_category = get_object_category(object_name)
 
     return {
