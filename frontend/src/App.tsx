@@ -1,3 +1,7 @@
+// ... any existing imports
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+// ... rest of your code
 import { Users } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -600,7 +604,7 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
       formData.append("top_image", appData.topViewImage.file);
       formData.append("real_width_cm", appData.knownWidth);
 
-      const response = await fetch("http://localhost:8000/api/analyze", {
+      const response = await fetch(`${API_URL}/api/analyze`, {
         method: "POST",
         body: formData,
       });
@@ -616,7 +620,7 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
       const fullBomData = Array.isArray(data.bom) ? data.bom : [data.bom];
       setAppData(prev => ({
         ...prev,
-        annotatedImageUrl: data.bbox_image_path ? `http://localhost:8000/outputs/${data.bbox_image_path.split(/[\\/]/).pop()}` : null,
+        annotatedImageUrl: data.bbox_image_path ? `${API_URL}/outputs/${data.bbox_image_path.split(/[\\/]/).pop()}` : null,
         detectedObject: data.object_name || "Detected Object",
         confidence: data.object_confidence ?? prev.confidence,
         dimensions: {
@@ -1141,7 +1145,7 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
       : null;
 
     try {
-      const response = await fetch("http://localhost:8000/api/packaging", {
+      const response = await fetch(`${API_URL}/api/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
