@@ -3,17 +3,30 @@ import cv2
 import uuid
 import numpy as np
 from ultralytics import YOLO
+import requests
 
 _model = None
 
-# ------------------------Model Loading------------------------
+HF_DETECTION_MODEL_URL = "https://huggingface.co/spaces/Vedantiii3/packsmart-backend/resolve/main/models/best.pt"
+
+def download_model_if_needed(model_path):
+    if not os.path.exists(model_path):
+        print(f"Downloading detection model to {model_path}...")
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+        response = requests.get(HF_DETECTION_MODEL_URL, stream=True)
+        response.raise_for_status()
+        with open(model_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        print("Detection model downloaded.")
+
 def load_model(model_path=None):
     global _model
     if _model is None:
         if model_path is None:
-            # Go up 2 levels from backend/modules to root
             base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             model_path = os.path.join(base_dir, "models", "best.pt")
+        download_model_if_needed(model_path)
         _model = YOLO(model_path)
     return _model
 

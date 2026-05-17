@@ -604,7 +604,7 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
       formData.append("top_image", appData.topViewImage.file);
       formData.append("real_width_cm", appData.knownWidth);
 
-      const response = await fetch(`${API_URL}/api/analyze`, {
+      const response = await fetch(`${API_URL}/api/packaging`, {
         method: "POST",
         body: formData,
       });

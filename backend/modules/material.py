@@ -7,6 +7,21 @@ import os
 import numpy as np
 from torchvision import models, transforms
 
+import requests
+
+HF_MATERIAL_MODEL_URL = "https://huggingface.co/spaces/Vedantiii3/packsmart-backend/resolve/main/models/efficientnetb4_best_model.pth"
+
+def download_material_model_if_needed(model_path):
+    if not os.path.exists(model_path):
+        print(f"Downloading material model to {model_path}...")
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+        response = requests.get(HF_MATERIAL_MODEL_URL, stream=True)
+        response.raise_for_status()
+        with open(model_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        print("Material model downloaded.")
+
 def get_model_path():
     # Go up 2 levels from backend/modules to root
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -67,6 +82,7 @@ def load_material_model():
     global _model_material, _class_names
 
     if _model_material is None:
+        download_material_model_if_needed(MODEL_PATH)
 
         # Load class names
         _class_names = [ "Aluminum", "Brass", "Copper", "Iron", "Steel", "Ceramic", "Glass", "Paper", "Plastic", "Wood"]
