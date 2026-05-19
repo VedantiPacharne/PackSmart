@@ -604,7 +604,7 @@ function CapturePage({ appData, setAppData, currentPage, setCurrentPage, openCam
       formData.append("top_image", appData.topViewImage.file);
       formData.append("real_width_cm", appData.knownWidth);
 
-      const response = await fetch(`${API_URL}/api/packaging`, {
+      const response = await fetch(`${API_URL}/api/analyze`, {
         method: "POST",
         body: formData,
       });
@@ -1145,7 +1145,7 @@ function MaterialsPage({ appData, setAppData, currentPage, setCurrentPage }: Pag
       : null;
 
     try {
-      const response = await fetch(`${API_URL}/api/analyze`, {
+      const response = await fetch(`${API_URL}/api/packaging`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
